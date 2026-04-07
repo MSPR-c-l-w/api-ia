@@ -1,0 +1,6 @@
+Flask>=3.0.0
+flask-smorest>=0.44.0
+marshmallow>=3.21.0
+python-dotenv>=1.0.1
+pymongo>=4.7.0
+pytest>=8.2.0
