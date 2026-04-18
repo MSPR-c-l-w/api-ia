@@ -12,3 +12,9 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
     MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/healthai_coach")
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+    # NestJS backend base URL (no trailing slash)
+    BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:3000")
+    # Timeout in seconds for backend HTTP calls
+    BACKEND_TIMEOUT = int(os.getenv("BACKEND_TIMEOUT", "10"))
+
