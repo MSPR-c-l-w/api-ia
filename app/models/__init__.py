@@ -5,6 +5,12 @@ from app.models.schemas import (
     RecommendationRequest,
     RecommendationResponse,
 )
+from app.models.workout_documents import (
+    UserFitnessProfile,
+    WorkoutFeedback,
+    WorkoutProgram,
+    WorkoutProgramStatus,
+)
 
 __all__ = [
     "HealthResponse",
@@ -12,4 +18,8 @@ __all__ = [
     "NutritionAnalysisResponse",
     "RecommendationRequest",
     "RecommendationResponse",
+    "UserFitnessProfile",
+    "WorkoutFeedback",
+    "WorkoutProgram",
+    "WorkoutProgramStatus",
 ]

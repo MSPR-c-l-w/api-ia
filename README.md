@@ -71,8 +71,15 @@ pytest
 
 `ENVIRONMENT=test` désactive la connexion MongoDB au démarrage (voir `tests/conftest.py`).
 
+## Schéma MongoDB
+
+Voir [docs/mongodb-schema.md](docs/mongodb-schema.md).
+
+```bash
+python scripts/seed_mongodb.py
+```
+
 ## Suite (EPIC #79)
 
-- Schémas MongoDB (#94)
 - Moteur de recommandation (#95–#98)
 - Intégration NestJS (#99 sur le dépôt `backend`)

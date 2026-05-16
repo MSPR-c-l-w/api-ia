@@ -20,9 +20,12 @@ def get_database() -> AsyncIOMotorDatabase:
 
 async def connect_mongodb() -> None:
     global _client, _database
+    from app.services.indexes import ensure_indexes
+
     _client = AsyncIOMotorClient(settings.mongodb_uri)
     _database = _client.get_default_database()
     await _client.admin.command("ping")
+    await ensure_indexes(_database)
 
 
 async def close_mongodb() -> None:
