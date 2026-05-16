@@ -95,11 +95,22 @@ def _score_limitations_soft(
     return 0.0 if conflict else 1.0
 
 
+def _blocked_exercise_ids(limitations: list[str]) -> set[str]:
+    prefix = "exercice_problematique:"
+    return {
+        item.removeprefix(prefix)
+        for item in limitations
+        if item.startswith(prefix)
+    }
+
+
 def is_exercise_compatible(
     exercise: ExerciseDefinition,
     profile: UserProfileForScoring,
 ) -> bool:
     """Filtres durs : limitations et matériel indisponible."""
+    if exercise.id in _blocked_exercise_ids(profile.limitations):
+        return False
     if _score_limitations_soft(exercise, profile) == 0.0:
         return False
     if _score_equipment_availability(exercise, profile) == 0.0:

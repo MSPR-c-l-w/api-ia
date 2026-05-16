@@ -55,6 +55,28 @@ class WorkoutDayResponse(BaseModel):
     exercices: list[WorkoutSessionExerciseResponse] = Field(default_factory=list)
 
 
+class WorkoutFeedbackRequest(BaseModel):
+    model_config = {"populate_by_name": True}
+
+    rating: int = Field(ge=1, le=5)
+    trop_difficile: bool = Field(default=False, alias="tropDifficile")
+    trop_facile: bool = Field(default=False, alias="tropFacile")
+    exercices_problematiques: list[str] = Field(
+        default_factory=list,
+        alias="exercicesProblematiques",
+    )
+
+
+class WorkoutFeedbackResponse(BaseModel):
+    model_config = {"populate_by_name": True}
+
+    feedback_id: str = Field(alias="feedbackId")
+    program_id: str = Field(alias="programId")
+    user_id: int = Field(alias="userId")
+    profile_niveau: str = Field(alias="profileNiveau")
+    created_at: datetime = Field(alias="createdAt")
+
+
 class WorkoutProgramResponse(BaseModel):
     model_config = {"populate_by_name": True}
 

@@ -53,6 +53,15 @@ def test_athlete_profile_can_select_advanced_cardio():
     assert score_burpees > score_marche
 
 
+def test_exercise_blocked_by_temporary_limitation_token():
+    profile = UserProfileForScoring(
+        objectif="renforcement",
+        niveau="debutant",
+        limitations=["exercice_problematique:squat-pdc"],
+    )
+    assert not is_exercise_compatible(_find("squat-pdc"), profile)
+
+
 def test_knee_injury_excludes_squats_and_lunges():
     profile = UserProfileForScoring(
         objectif="renforcement",

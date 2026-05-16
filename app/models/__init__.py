@@ -2,6 +2,8 @@ from app.models.schemas import (
     HealthResponse,
     NutritionAnalysisRequest,
     NutritionAnalysisResponse,
+    WorkoutFeedbackRequest,
+    WorkoutFeedbackResponse,
     WorkoutProgramRequest,
     WorkoutProgramResponse,
 )
@@ -16,6 +18,8 @@ __all__ = [
     "HealthResponse",
     "NutritionAnalysisRequest",
     "NutritionAnalysisResponse",
+    "WorkoutFeedbackRequest",
+    "WorkoutFeedbackResponse",
     "WorkoutProgramRequest",
     "WorkoutProgramResponse",
     "UserFitnessProfile",

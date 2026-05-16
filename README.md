@@ -57,6 +57,7 @@ docker compose up --build
 | `GET` | `/health` | Santé du service (`status`, `timestamp`) |
 | `POST` | `/api/nutrition/analyze` | Analyse nutrition (stub) |
 | `POST` | `/recommendations/workout` | Programme hebdomadaire (header `X-API-Key`) |
+| `POST` | `/recommendations/workout/{id}/feedback` | Retour utilisateur sur un programme |
 
 ## OpenAPI
 
