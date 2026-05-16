@@ -29,7 +29,7 @@ Dockerfile
 | Variable | Description |
 |----------|-------------|
 | `MONGODB_URI` | URI MongoDB (ex. `mongodb://localhost:27017/healthai_coach`) |
-| `BACKEND_API_KEY` | Clé partagée avec le backend NestJS (auth inter-services, #99) |
+| `BACKEND_API_KEY` | Clé partagée avec le backend NestJS — header `X-API-Key` requis sur `/recommendations/*` |
 | `PORT` | Port HTTP (défaut `8000`) |
 | `ENVIRONMENT` | `development` \| `test` \| `production` |
 
@@ -56,7 +56,7 @@ docker compose up --build
 |---------|--------|-------------|
 | `GET` | `/health` | Santé du service (`status`, `timestamp`) |
 | `POST` | `/api/nutrition/analyze` | Analyse nutrition (stub) |
-| `POST` | `/api/recommendations/workout` | Recommandation sport (stub) |
+| `POST` | `/recommendations/workout` | Programme hebdomadaire (header `X-API-Key`) |
 
 ## OpenAPI
 

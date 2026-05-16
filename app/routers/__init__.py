@@ -7,6 +7,6 @@ api_router.include_router(health.router)
 api_router.include_router(nutrition.router, prefix="/api/nutrition", tags=["nutrition"])
 api_router.include_router(
     recommendations.router,
-    prefix="/api/recommendations",
+    prefix="/recommendations",
     tags=["recommendations"],
 )

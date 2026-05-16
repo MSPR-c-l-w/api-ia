@@ -22,16 +22,44 @@ class NutritionAnalysisResponse(BaseModel):
     model_status: str
 
 
-class RecommendationRequest(BaseModel):
-    objective: str
-    level: str
-    constraints: list[str] = Field(default_factory=list)
-    equipment: list[str] = Field(default_factory=list)
-    duration_minutes: int = 30
+class WorkoutProgramRequest(BaseModel):
+    user_id: int = Field(alias="userId", ge=1)
+    objectif: str = Field(min_length=1)
+    niveau: str = Field(min_length=1)
+    materiel: list[str] = Field(default_factory=list)
+    preferences: list[str] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+
+    model_config = {"populate_by_name": True}
 
 
-class RecommendationResponse(BaseModel):
-    session_name: str
-    exercises: list[dict]
-    rationale: list[str]
-    storage: dict
+class WorkoutSessionExerciseResponse(BaseModel):
+    model_config = {"populate_by_name": True}
+
+    id: str
+    sets: int | None = None
+    reps: int | None = None
+    duree: int | None = None
+    estimated_duration_minutes: int = Field(
+        alias="estimatedDurationMinutes",
+        description="Durée estimée de l'exercice en minutes",
+    )
+
+
+class WorkoutDayResponse(BaseModel):
+    model_config = {"populate_by_name": True}
+
+    jour: str
+    is_rest_day: bool = Field(alias="isRestDay")
+    estimated_session_minutes: int = Field(alias="estimatedSessionMinutes")
+    exercices: list[WorkoutSessionExerciseResponse] = Field(default_factory=list)
+
+
+class WorkoutProgramResponse(BaseModel):
+    model_config = {"populate_by_name": True}
+
+    program_id: str = Field(alias="programId")
+    user_id: int = Field(alias="userId")
+    statut: str
+    programme: list[WorkoutDayResponse]
+    generated_at: datetime = Field(alias="generatedAt")
