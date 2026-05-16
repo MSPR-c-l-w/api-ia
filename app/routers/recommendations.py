@@ -4,6 +4,7 @@ from app.models.schemas import RecommendationRequest, RecommendationResponse
 from app.models.user_profile_scoring import UserProfileForScoring
 from app.services import database
 from app.services.recommendation_engine import recommend_exercises
+from app.services.weekly_planner import generate_weekly_program
 
 router = APIRouter()
 
@@ -25,6 +26,7 @@ async def recommend_workout(
         preferences=[],
         limitations=constraints,
     )
+    weekly_programme = generate_weekly_program(profile)
     ranked = recommend_exercises(profile, top_n_per_group=2)
 
     exercises: list[dict] = [
@@ -50,9 +52,11 @@ async def recommend_workout(
             f"Contraintes prises en compte: {', '.join(constraints) if constraints else 'aucune'}.",
             f"Materiel disponible: {', '.join(equipment) if equipment else 'aucun'}.",
             f"{len(exercises)} exercices selectionnes par groupe musculaire.",
+            f"Programme hebdomadaire : {len([d for d in weekly_programme if d.exercices])} seances / 7 jours.",
         ],
         storage={
             "engine": "mongodb",
             "status": "connected" if mongo_ok else "disconnected",
+            "weekly_programme": [day.model_dump() for day in weekly_programme],
         },
     )
