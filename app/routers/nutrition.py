@@ -5,7 +5,18 @@ from app.models.schemas import NutritionAnalysisRequest, NutritionAnalysisRespon
 router = APIRouter()
 
 
-@router.post("/analyze", response_model=NutritionAnalysisResponse)
+@router.post(
+    "/analyze",
+    response_model=NutritionAnalysisResponse,
+    summary="Analyser un repas (stub)",
+    description=(
+        "Analyse nutritionnelle à partir d'une image ou d'un objectif utilisateur. "
+        "Implémentation stub en attendant l'intégration Hugging Face."
+    ),
+    responses={
+        422: {"description": "Corps de requête invalide"},
+    },
+)
 async def analyze_nutrition(
     payload: NutritionAnalysisRequest,
 ) -> NutritionAnalysisResponse:
