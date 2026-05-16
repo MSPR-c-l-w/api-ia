@@ -22,5 +22,8 @@ async def test_workout_recommendation_stub():
     assert response.status_code == 200
     data = response.json()
     assert data["session_name"] == "session_renforcement_debutant"
-    assert len(data["exercises"]) == 3
+    assert len(data["exercises"]) >= 1
+    exercise_ids = [ex.get("id", "") for ex in data["exercises"]]
+    assert "squat-pdc" not in exercise_ids
+    assert "fentes" not in exercise_ids
     assert data["storage"]["engine"] == "mongodb"

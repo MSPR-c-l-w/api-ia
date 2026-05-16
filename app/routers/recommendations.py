@@ -1,7 +1,9 @@
 from fastapi import APIRouter
 
 from app.models.schemas import RecommendationRequest, RecommendationResponse
+from app.models.user_profile_scoring import UserProfileForScoring
 from app.services import database
+from app.services.recommendation_engine import recommend_exercises
 
 router = APIRouter()
 
@@ -16,38 +18,26 @@ async def recommend_workout(
     equipment = payload.equipment
     duration = payload.duration_minutes
 
-    knee_safe = "mal au genou" in [item.lower() for item in constraints]
+    profile = UserProfileForScoring(
+        objectif=objective,
+        niveau=level,
+        materiel=equipment,
+        preferences=[],
+        limitations=constraints,
+    )
+    ranked = recommend_exercises(profile, top_n_per_group=2)
 
     exercises: list[dict] = [
         {
-            "name": "marche rapide",
-            "duration_minutes": 10,
+            "id": exercise.id,
+            "name": exercise.name,
+            "muscle_group": exercise.muscle_group,
+            "score": score,
             "difficulty": level,
-            "tags": ["cardio", "sans materiel", "faible impact"],
-        },
-        {
-            "name": "pont fessier",
-            "repetitions": "3 x 12",
-            "difficulty": level,
-            "tags": ["renforcement", "faible impact"],
-        },
-        {
-            "name": "gainage",
-            "repetitions": "3 x 30 sec",
-            "difficulty": level,
-            "tags": ["core", "sans materiel"],
-        },
+            "tags": exercise.tags,
+        }
+        for exercise, score in ranked
     ]
-
-    if not knee_safe:
-        exercises.append(
-            {
-                "name": "squats poids du corps",
-                "repetitions": "3 x 10",
-                "difficulty": level,
-                "tags": ["jambes", "sans materiel"],
-            }
-        )
 
     mongo_ok = await database.ping_mongodb()
 
@@ -55,10 +45,11 @@ async def recommend_workout(
         session_name=f"session_{objective}_{level}",
         exercises=exercises,
         rationale=[
-            f"Programme genere pour un objectif de {objective}.",
+            f"Programme genere pour un objectif de {objective} (moteur multi-criteres).",
             f"Duree cible: {duration} minutes.",
             f"Contraintes prises en compte: {', '.join(constraints) if constraints else 'aucune'}.",
             f"Materiel disponible: {', '.join(equipment) if equipment else 'aucun'}.",
+            f"{len(exercises)} exercices selectionnes par groupe musculaire.",
         ],
         storage={
             "engine": "mongodb",
