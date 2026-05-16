@@ -1,14 +1,24 @@
-import os
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Config:
-    API_TITLE = "HealthAI Coach API"
-    API_VERSION = "0.1.0"
-    OPENAPI_VERSION = "3.0.3"
-    OPENAPI_URL_PREFIX = "/docs"
-    OPENAPI_SWAGGER_UI_PATH = "/swagger"
-    OPENAPI_SWAGGER_UI_URL = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
-    MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/healthai_coach")
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+    api_title: str = "HealthAI Coach API"
+    api_version: str = "0.2.0"
+    environment: str = "development"
+    secret_key: str = "dev-secret-key"
+    mongodb_uri: str = "mongodb://localhost:27017/healthai_coach"
+    backend_api_key: str = "change-me"
+    port: int = 8000
+
+    @property
+    def skip_mongodb_on_startup(self) -> bool:
+        return self.environment == "test"
+
+
+settings = Settings()

@@ -1,11 +1,16 @@
-from app import create_app
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from app.main import app
 
 
-def test_health_endpoint():
-    app = create_app()
-    client = app.test_client()
-
-    response = client.get("/api/health/")
+@pytest.mark.asyncio
+async def test_health_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/health")
 
     assert response.status_code == 200
-    assert response.get_json()["status"] == "ok"
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "timestamp" in data
