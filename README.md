@@ -1,6 +1,6 @@
 # HealthAI Coach API (api-ia)
 
-Micro-service **FastAPI** + **MongoDB** (Motor) pour l'analyse nutritionnelle et les recommandations sportives IA.
+Micro-service **Flask** + **MongoDB** (Motor) pour l'analyse nutritionnelle et les recommandations sportives IA.
 
 Partie de l'[EPIC #79](https://github.com/MSPR-c-l-w/backend/issues/79) (issues suivies sur le dépôt `backend`).
 
@@ -10,26 +10,27 @@ Partie de l'[EPIC #79](https://github.com/MSPR-c-l-w/backend/issues/79) (issues 
 - **MongoDB 7** (local ou via Docker)
 - Clé API partagée avec le backend NestJS (`BACKEND_API_KEY` = `WORKOUT_SERVICE_API_KEY`)
 
-## Structure
+## Structure (clean architecture)
 
 ```text
 app/
+  contexts/
+    workout/          # Moteur sport — domain, application, infrastructure
+    nutrition/        # Nutrition — use cases + stub vision
+  shared/             # MongoDB, exceptions applicatives
+  composition/        # Container (injection de dépendances)
+  routers/            # Blueprints Flask
   main.py
-  config.py
-  openapi_config.py
-  routers/
-  models/
-  services/
 docs/
+  architecture.md
+  mspr-contexte.md
   mongodb-schema.md
-openapi.json          # export versionné (scripts/export_openapi.py)
-scripts/
-  export_openapi.py
-  seed_mongodb.py
+AGENTS.md             # Guide agents IA
+openapi.json
 tests/
-docker-compose.yml
-Dockerfile
 ```
+
+Voir [docs/architecture.md](docs/architecture.md) et [AGENTS.md](AGENTS.md).
 
 ## Variables d'environnement
 
@@ -73,8 +74,7 @@ Services : API (`8000`) + MongoDB (`27017`).
 
 ## OpenAPI
 
-- **Swagger UI** (développement) : http://127.0.0.1:8000/docs — sans authentification pour la page ; utiliser **Authorize** avec `X-API-Key` pour tester `/recommendations/*`
-- **ReDoc** : http://127.0.0.1:8000/redoc
+- **Swagger UI** (développement) : http://127.0.0.1:8000/docs — ajouter le header `X-API-Key` dans l'UI pour tester `/recommendations/*`
 - **JSON live** : http://127.0.0.1:8000/openapi.json
 - **Export versionné** :
 

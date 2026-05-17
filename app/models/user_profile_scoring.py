@@ -1,11 +1,5 @@
-from pydantic import BaseModel, Field
+"""Compatibilité — voir ``contexts.workout.domain.value_objects``."""
 
+from app.contexts.workout.domain.value_objects.user_profile import UserProfileForScoring
 
-class UserProfileForScoring(BaseModel):
-    """Profil utilisateur pour le moteur multi-critères (#95)."""
-
-    objectif: str
-    niveau: str
-    materiel: list[str] = Field(default_factory=list)
-    preferences: list[str] = Field(default_factory=list)
-    limitations: list[str] = Field(default_factory=list)
+__all__ = ["UserProfileForScoring"]

@@ -1,38 +1,18 @@
-from fastapi import APIRouter
+from flask import Blueprint
 
-from app.models.schemas import NutritionAnalysisRequest, NutritionAnalysisResponse
-
-router = APIRouter()
-
-
-@router.post(
-    "/analyze",
-    response_model=NutritionAnalysisResponse,
-    summary="Analyser un repas (stub)",
-    description=(
-        "Analyse nutritionnelle à partir d'une image ou d'un objectif utilisateur. "
-        "Implémentation stub en attendant l'intégration Hugging Face."
-    ),
-    responses={
-        422: {"description": "Corps de requête invalide"},
-    },
+from app.composition.container import get_container
+from app.contexts.nutrition.presentation.schemas import (
+    NutritionAnalysisRequest,
+    NutritionAnalysisResponse,
 )
-async def analyze_nutrition(
-    payload: NutritionAnalysisRequest,
-) -> NutritionAnalysisResponse:
-    goal = payload.user_goal or "equilibre"
+from app.presentation.http import model_response, parse_json
 
-    return NutritionAnalysisResponse(
-        detected_foods=[{"label": "poulet-riz", "confidence": 0.84}],
-        estimated_calories=520,
-        estimated_macros={
-            "proteins_g": 32,
-            "carbs_g": 54,
-            "fats_g": 14,
-        },
-        feedback=[
-            f"Repas compatible avec un objectif de {goal}.",
-            "Ajouter une source de fibres peut ameliorer l'equilibre nutritionnel.",
-        ],
-        model_status="stub_ready_for_huggingface",
-    )
+nutrition_bp = Blueprint("nutrition", __name__, url_prefix="/api/nutrition")
+
+
+@nutrition_bp.post("/analyze")
+async def analyze_nutrition():
+    """Analyse nutritionnelle (stub — intégration Hugging Face à venir)."""
+    payload = parse_json(NutritionAnalysisRequest)
+    result: NutritionAnalysisResponse = await get_container().analyze_meal.execute(payload)
+    return model_response(result)

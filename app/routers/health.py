@@ -1,17 +1,14 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter
+from flask import Blueprint
 
 from app.models.schemas import HealthResponse
+from app.presentation.http import model_response
 
-router = APIRouter(tags=["health"])
+health_bp = Blueprint("health", __name__)
 
 
-@router.get(
-    "/health",
-    response_model=HealthResponse,
-    summary="Sonde de santé",
-    description="Vérifie que l'API répond. Aucune authentification requise.",
-)
-async def health_check() -> HealthResponse:
-    return HealthResponse(status="ok", timestamp=datetime.now(UTC))
+@health_bp.get("/health")
+async def health_check():
+    """Sonde de santé — aucune authentification requise."""
+    return model_response(HealthResponse(status="ok", timestamp=datetime.now(UTC)))

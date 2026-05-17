@@ -1,11 +1,5 @@
-from motor.motor_asyncio import AsyncIOMotorDatabase
+"""Compatibilité — voir ``app.shared.infrastructure.indexes``."""
 
-from app.services import collections as col
+from app.shared.infrastructure.indexes import ensure_indexes
 
-
-async def ensure_indexes(database: AsyncIOMotorDatabase) -> None:
-    """Crée les index MongoDB pour les collections EPIC #79."""
-    await database[col.WORKOUT_PROGRAMS].create_index("userId")
-    await database[col.USER_FITNESS_PROFILES].create_index("userId")
-    await database[col.WORKOUT_FEEDBACKS].create_index("userId")
-    await database[col.WORKOUT_FEEDBACKS].create_index("programId")
+__all__ = ["ensure_indexes"]

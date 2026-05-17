@@ -13,13 +13,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 os.environ.setdefault("ENVIRONMENT", "test")
 
-from app.main import app  # noqa: E402
+from app.presentation.openapi import build_openapi_schema  # noqa: E402
 
 OUTPUT = os.path.join(os.path.dirname(os.path.dirname(__file__)), "openapi.json")
 
 
 def main() -> None:
-    schema = app.openapi()
+    schema = build_openapi_schema()
     with open(OUTPUT, "w", encoding="utf-8") as handle:
         json.dump(schema, handle, indent=2, ensure_ascii=False)
         handle.write("\n")

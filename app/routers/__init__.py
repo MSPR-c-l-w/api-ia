@@ -1,12 +1,11 @@
-from fastapi import APIRouter
+from flask import Flask
 
-from app.routers import health, nutrition, recommendations
+from app.routers.health import health_bp
+from app.routers.nutrition import nutrition_bp
+from app.routers.recommendations import recommendations_bp
 
-api_router = APIRouter()
-api_router.include_router(health.router)
-api_router.include_router(nutrition.router, prefix="/api/nutrition", tags=["nutrition"])
-api_router.include_router(
-    recommendations.router,
-    prefix="/recommendations",
-    tags=["recommendations"],
-)
+
+def register_blueprints(app: Flask) -> None:
+    app.register_blueprint(health_bp)
+    app.register_blueprint(nutrition_bp)
+    app.register_blueprint(recommendations_bp)

@@ -1,75 +1,57 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
-import pytest
-from httpx import ASGITransport, AsyncClient
-
-from app.main import app
+from app.config import settings
 
 API_KEY = "test-api-key"
 HEADERS = {"X-API-Key": API_KEY}
 
 
-@pytest.fixture(autouse=True)
-def api_key_env(monkeypatch):
-    monkeypatch.setenv("BACKEND_API_KEY", API_KEY)
-    monkeypatch.setenv("ENVIRONMENT", "test")
-
-
-@pytest.mark.asyncio
-async def test_workout_requires_api_key():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
-            "/recommendations/workout",
-            json={
-                "userId": 1,
-                "objectif": "renforcement",
-                "niveau": "debutant",
-                "materiel": [],
-                "preferences": [],
-                "limitations": ["mal au genou"],
-            },
-        )
+def test_workout_requires_api_key(client):
+    response = client.post(
+        "/recommendations/workout",
+        json={
+            "userId": 1,
+            "objectif": "renforcement",
+            "niveau": "debutant",
+            "materiel": [],
+            "preferences": [],
+            "limitations": ["mal au genou"],
+        },
+    )
 
     assert response.status_code == 401
 
 
-@pytest.mark.asyncio
-async def test_workout_invalid_api_key():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
-            "/recommendations/workout",
-            headers={"X-API-Key": "wrong"},
-            json={
-                "userId": 1,
-                "objectif": "renforcement",
-                "niveau": "debutant",
-            },
-        )
+def test_workout_invalid_api_key(client):
+    response = client.post(
+        "/recommendations/workout",
+        headers={"X-API-Key": "wrong"},
+        json={
+            "userId": 1,
+            "objectif": "renforcement",
+            "niveau": "debutant",
+        },
+    )
 
     assert response.status_code == 401
 
 
-@pytest.mark.asyncio
-async def test_workout_generates_weekly_program():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
-            "/recommendations/workout",
-            headers=HEADERS,
-            json={
-                "userId": 42,
-                "objectif": "renforcement",
-                "niveau": "debutant",
-                "materiel": [],
-                "preferences": ["faible impact"],
-                "limitations": ["mal au genou"],
-            },
-        )
+def test_workout_generates_weekly_program(client):
+    response = client.post(
+        "/recommendations/workout",
+        headers=HEADERS,
+        json={
+            "userId": 42,
+            "objectif": "renforcement",
+            "niveau": "debutant",
+            "materiel": [],
+            "preferences": ["faible impact"],
+            "limitations": ["mal au genou"],
+        },
+    )
 
     assert response.status_code == 200
-    data = response.json()
+    data = response.get_json()
     assert data["userId"] == 42
     assert data["statut"] == "ACTIVE"
     assert len(data["programme"]) == 7
@@ -94,45 +76,43 @@ async def test_workout_generates_weekly_program():
     assert len(exercise_ids) == len(set(exercise_ids))
 
 
-@pytest.mark.asyncio
-async def test_workout_returns_400_when_data_insufficient():
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.post(
+def test_workout_returns_400_when_data_insufficient(client):
+    response = client.post(
+        "/recommendations/workout",
+        headers=HEADERS,
+        json={
+            "userId": 1,
+            "objectif": "   ",
+            "niveau": "debutant",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["detail"] == "INSUFFICIENT_USER_DATA"
+
+
+def test_workout_returns_503_when_mongodb_unavailable(client):
+    with (
+        patch.object(
+            type(settings),
+            "skip_mongodb_on_startup",
+            new_callable=PropertyMock,
+            return_value=False,
+        ),
+        patch(
+            "app.contexts.workout.infrastructure.persistence.mongo_workout_program_repository.database.ping_mongodb",
+            new_callable=AsyncMock,
+            return_value=False,
+        ),
+    ):
+        response = client.post(
             "/recommendations/workout",
             headers=HEADERS,
             json={
                 "userId": 1,
-                "objectif": "   ",
+                "objectif": "renforcement",
                 "niveau": "debutant",
             },
         )
-
-    assert response.status_code == 400
-    assert response.json()["detail"] == "INSUFFICIENT_USER_DATA"
-
-
-@pytest.mark.asyncio
-async def test_workout_returns_503_when_mongodb_unavailable():
-    with patch(
-        "app.services.workout_program_service._ensure_mongodb_available",
-        new_callable=AsyncMock,
-    ) as mock_ensure:
-        mock_ensure.side_effect = __import__(
-            "fastapi",
-            fromlist=["HTTPException"],
-        ).HTTPException(status_code=503, detail="MONGODB_UNAVAILABLE")
-
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post(
-                "/recommendations/workout",
-                headers=HEADERS,
-                json={
-                    "userId": 1,
-                    "objectif": "renforcement",
-                    "niveau": "debutant",
-                },
-            )
 
     assert response.status_code == 503
