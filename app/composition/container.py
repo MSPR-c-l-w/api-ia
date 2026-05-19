@@ -5,6 +5,9 @@ from app.contexts.nutrition.application.use_cases.analyze_meal import AnalyzeMea
 from app.contexts.nutrition.application.use_cases.generate_meal_plan import (
     GenerateMealPlanUseCase,
 )
+from app.contexts.nutrition.infrastructure.vision.google_vision_provider import (
+    GoogleVisionProvider,
+)
 from app.contexts.nutrition.infrastructure.vision.huggingface_provider import (
     HuggingFaceVisionProvider,
 )
@@ -41,7 +44,14 @@ class Container:
             api_key=settings.nutrition_huggingface_api_key,
             timeout_seconds=settings.nutrition_provider_timeout_seconds,
         )
-        self.analyze_meal = AnalyzeMealUseCase(hf_provider=hf_provider)
+        google_provider = GoogleVisionProvider(
+            endpoint=settings.nutrition_google_vision_endpoint,
+            api_key=settings.nutrition_google_vision_api_key,
+            timeout_seconds=settings.nutrition_provider_timeout_seconds,
+        )
+        self.analyze_meal = AnalyzeMealUseCase(
+            vision_providers=[hf_provider, google_provider],
+        )
         self.generate_meal_plan = GenerateMealPlanUseCase()
 
 
