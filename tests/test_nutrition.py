@@ -14,7 +14,12 @@ def test_nutrition_analyze_ai_endpoint(client):
     assert isinstance(data["detectedFoods"], list)
     assert data["detectedFoods"][0]["label"]
     assert data["estimatedCalories"] > 0
-    assert set(data["estimatedMacros"].keys()) == {"proteins_g", "carbs_g", "fats_g"}
+    assert set(data["estimatedMacros"].keys()) == {"proteins_g", "carbs_g", "fats_g", "fibers_g"}
+    assert data["imbalanceStatus"] in ("EQUILIBRE", "DESEQUILIBRE")
+    assert isinstance(data["nutrientDetails"], list)
+    assert len(data["nutrientDetails"]) > 0
+    assert isinstance(data["feedback"], list)
+    assert len(data["feedback"]) > 0
 
 
 def test_nutrition_meal_plan_endpoint(client):

@@ -10,6 +10,18 @@ class EstimatedMacros(BaseModel):
     proteins_g: float = Field(ge=0, description="Protéines estimées (g)")
     carbs_g: float = Field(ge=0, description="Glucides estimés (g)")
     fats_g: float = Field(ge=0, description="Lipides estimés (g)")
+    fibers_g: float = Field(default=0.0, ge=0, description="Fibres estimées (g)")
+
+
+class NutrientDetailSchema(BaseModel):
+    """Statut d'un nutriment par rapport à la cible quotidienne (pour 1 repas)."""
+
+    name: str = Field(description="Nom du nutriment")
+    actual: float = Field(description="Valeur mesurée pour ce repas")
+    target: float = Field(description="Cible pour ce repas (1/3 de la cible journalière)")
+    unit: str = Field(description="Unité (kcal ou g)")
+    status: str = Field(description="OK | EXCES | DEFICIT")
+    deviation_pct: float = Field(description="Écart par rapport à la cible en %")
 
 
 class NutritionAnalysisRequest(BaseModel):
@@ -47,13 +59,16 @@ class NutritionAnalysisResponse(BaseModel):
         populate_by_name=True,
         json_schema_extra={
             "example": {
-                "detectedFoods": [{"label": "poulet-riz", "confidence": 0.84}],
+                "detectedFoods": [{"label": "poulet", "confidence": 0.91}],
                 "estimatedCalories": 520,
                 "estimatedMacros": {
                     "proteins_g": 32,
                     "carbs_g": 54,
                     "fats_g": 14,
+                    "fibers_g": 3.0,
                 },
+                "imbalanceStatus": "EQUILIBRE",
+                "nutrientDetails": [],
                 "feedback": ["Repas équilibré pour un objectif de perte de poids."],
                 "modelStatus": "stub_ready_for_huggingface",
             },
@@ -72,6 +87,16 @@ class NutritionAnalysisResponse(BaseModel):
     estimated_macros: EstimatedMacros = Field(
         alias="estimatedMacros",
         description="Macronutriments estimés (g)",
+    )
+    imbalance_status: str = Field(
+        alias="imbalanceStatus",
+        description="Statut global du repas : EQUILIBRE | DESEQUILIBRE",
+        examples=["EQUILIBRE", "DESEQUILIBRE"],
+    )
+    nutrient_details: list[NutrientDetailSchema] = Field(
+        default_factory=list,
+        alias="nutrientDetails",
+        description="Détail par nutriment avec statut et écart",
     )
     feedback: list[str] = Field(
         description="Conseils textuels générés pour l'utilisateur",

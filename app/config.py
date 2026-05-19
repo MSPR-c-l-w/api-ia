@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     nutrition_google_vision_endpoint: str | None = None
     nutrition_google_vision_api_key: str | None = None
     nutrition_provider_timeout_seconds: int = 5
+    nutrition_llm_endpoint: str | None = None
+    nutrition_llm_api_key: str | None = None
+    nutrition_llm_timeout_seconds: int = 30
     port: int = 8000
 
     @property

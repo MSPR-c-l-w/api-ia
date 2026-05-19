@@ -5,6 +5,10 @@ from app.contexts.nutrition.application.use_cases.analyze_meal import AnalyzeMea
 from app.contexts.nutrition.application.use_cases.generate_meal_plan import (
     GenerateMealPlanUseCase,
 )
+from app.contexts.nutrition.domain.services import NutritionImbalanceService
+from app.contexts.nutrition.infrastructure.cache import AiCacheService
+from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
+from app.contexts.nutrition.infrastructure.nutrition_lookup import NutritionLookupService
 from app.contexts.nutrition.infrastructure.vision.google_vision_provider import (
     GoogleVisionProvider,
 )
@@ -49,10 +53,23 @@ class Container:
             api_key=settings.nutrition_google_vision_api_key,
             timeout_seconds=settings.nutrition_provider_timeout_seconds,
         )
+        llm_provider = LlmProvider(
+            endpoint=settings.nutrition_llm_endpoint,
+            api_key=settings.nutrition_llm_api_key,
+            timeout_seconds=settings.nutrition_llm_timeout_seconds,
+        )
+        nutrition_lookup = NutritionLookupService()
+        imbalance_service = NutritionImbalanceService()
+        ai_cache = AiCacheService()
+
         self.analyze_meal = AnalyzeMealUseCase(
             vision_providers=[hf_provider, google_provider],
+            nutrition_lookup=nutrition_lookup,
+            imbalance_service=imbalance_service,
+            llm_provider=llm_provider,
+            cache=ai_cache,
         )
-        self.generate_meal_plan = GenerateMealPlanUseCase()
+        self.generate_meal_plan = GenerateMealPlanUseCase(llm_provider=llm_provider)
 
 
 @lru_cache
