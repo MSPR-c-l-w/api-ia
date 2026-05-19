@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-key"
     mongodb_uri: str = "mongodb://localhost:27017/healthai_coach"
     backend_api_key: str = "change-me"
+    nutrition_huggingface_endpoint: str | None = None
+    nutrition_huggingface_api_key: str | None = None
+    nutrition_provider_timeout_seconds: int = 5
     port: int = 8000
 
     @property

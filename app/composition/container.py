@@ -1,8 +1,12 @@
 from functools import lru_cache
 
+from app.config import settings
 from app.contexts.nutrition.application.use_cases.analyze_meal import AnalyzeMealUseCase
 from app.contexts.nutrition.application.use_cases.generate_meal_plan import (
     GenerateMealPlanUseCase,
+)
+from app.contexts.nutrition.infrastructure.vision.huggingface_provider import (
+    HuggingFaceVisionProvider,
 )
 from app.contexts.workout.application.use_cases.create_workout_program import (
     CreateWorkoutProgramUseCase,
@@ -31,7 +35,13 @@ class Container:
             self._workout_feedbacks,
             self._fitness_profiles,
         )
-        self.analyze_meal = AnalyzeMealUseCase()
+
+        hf_provider = HuggingFaceVisionProvider(
+            endpoint=settings.nutrition_huggingface_endpoint,
+            api_key=settings.nutrition_huggingface_api_key,
+            timeout_seconds=settings.nutrition_provider_timeout_seconds,
+        )
+        self.analyze_meal = AnalyzeMealUseCase(hf_provider=hf_provider)
         self.generate_meal_plan = GenerateMealPlanUseCase()
 
 
