@@ -1,106 +1,12 @@
-from app.contexts.workout.domain.value_objects.exercise_definition import ExerciseDefinition
+"""Re-export from domain layer for backward compatibility.
 
-LEVEL_ORDER = ["debutant", "intermediaire", "avance", "athlete"]
+The catalogue and level ordering are pure domain data and have been moved to
+``app.contexts.workout.domain.data.exercises_catalog``. This module re-exports
+them so that any existing code still referencing the infrastructure path keeps
+working without modification.
+"""
 
-EXERCISE_CATALOG: list[ExerciseDefinition] = [
-    ExerciseDefinition(
-        id="marche-rapide",
-        name="marche rapide",
-        muscle_group="cardio",
-        level="debutant",
-        objectives=["perte_de_poids", "endurance", "maintien"],
-        equipment=[],
-        tags=["cardio", "sans materiel", "faible impact"],
-        contraindications=[],
-    ),
-    ExerciseDefinition(
-        id="pont-fessier",
-        name="pont fessier",
-        muscle_group="fessiers",
-        level="debutant",
-        objectives=["renforcement", "maintien"],
-        equipment=[],
-        tags=["renforcement", "faible impact", "sans materiel"],
-        contraindications=[],
-    ),
-    ExerciseDefinition(
-        id="gainage",
-        name="gainage",
-        muscle_group="core",
-        level="debutant",
-        objectives=["renforcement", "maintien", "performance"],
-        equipment=[],
-        tags=["core", "sans materiel"],
-        contraindications=[],
-    ),
-    ExerciseDefinition(
-        id="squat-pdc",
-        name="squats poids du corps",
-        muscle_group="jambes",
-        level="intermediaire",
-        objectives=["renforcement", "prise_de_masse", "performance"],
-        equipment=[],
-        tags=["jambes", "sans materiel"],
-        contraindications=["genou"],
-    ),
-    ExerciseDefinition(
-        id="fentes",
-        name="fentes",
-        muscle_group="jambes",
-        level="intermediaire",
-        objectives=["renforcement", "prise_de_masse"],
-        equipment=[],
-        tags=["jambes", "sans materiel"],
-        contraindications=["genou"],
-    ),
-    ExerciseDefinition(
-        id="developpe-couche-halteres",
-        name="developpe couche halteres",
-        muscle_group="pectoraux",
-        level="intermediaire",
-        objectives=["prise_de_masse", "renforcement", "performance"],
-        equipment=["haltères", "banc"],
-        tags=["pectoraux", "haltères"],
-        contraindications=["epaule"],
-    ),
-    ExerciseDefinition(
-        id="souleve-terre",
-        name="souleve de terre",
-        muscle_group="dos",
-        level="avance",
-        objectives=["prise_de_masse", "performance", "renforcement"],
-        equipment=["barre", "haltères"],
-        tags=["dos", "force"],
-        contraindications=["dos", "genou"],
-    ),
-    ExerciseDefinition(
-        id="burpees",
-        name="burpees",
-        muscle_group="cardio",
-        level="avance",
-        objectives=["perte_de_poids", "performance", "endurance"],
-        equipment=[],
-        tags=["cardio", "intensif", "sans materiel"],
-        contraindications=["genou", "dos"],
-    ),
-    ExerciseDefinition(
-        id="traction",
-        name="tractions",
-        muscle_group="dos",
-        level="athlete",
-        objectives=["performance", "prise_de_masse", "renforcement"],
-        equipment=["barre de traction"],
-        tags=["dos", "force"],
-        contraindications=["epaule"],
-    ),
-    ExerciseDefinition(
-        id="course-intervalles",
-        name="course par intervalles",
-        muscle_group="cardio",
-        level="athlete",
-        objectives=["performance", "endurance", "perte_de_poids"],
-        equipment=[],
-        tags=["cardio", "intensif"],
-        contraindications=["genou"],
-    ),
-]
+from app.contexts.workout.domain.data.exercises_catalog import (  # noqa: F401
+    EXERCISE_CATALOG,
+    LEVEL_ORDER,
+)

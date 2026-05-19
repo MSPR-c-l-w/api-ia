@@ -11,7 +11,7 @@ from app.contexts.workout.domain.repositories.protocols import (
     WorkoutProgramRepository,
 )
 from app.contexts.workout.domain.services.recommendation_engine import _level_index
-from app.contexts.workout.infrastructure.data.exercises_catalog import LEVEL_ORDER
+from app.contexts.workout.domain.data.exercises_catalog import LEVEL_ORDER
 from app.contexts.workout.presentation.schemas import (
     WorkoutFeedbackRequest,
     WorkoutFeedbackResponse,

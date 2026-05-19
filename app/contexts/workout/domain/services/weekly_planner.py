@@ -4,7 +4,7 @@ from app.contexts.workout.domain.entities.workout_program import PlannedExercise
 from app.contexts.workout.domain.services.recommendation_engine import _level_index, score_exercise
 from app.contexts.workout.domain.value_objects.exercise_definition import ExerciseDefinition
 from app.contexts.workout.domain.value_objects.user_profile import UserProfileForScoring
-from app.contexts.workout.infrastructure.data.exercises_catalog import EXERCISE_CATALOG
+from app.contexts.workout.domain.data.exercises_catalog import EXERCISE_CATALOG
 
 WEEK_DAYS = [
     "lundi",

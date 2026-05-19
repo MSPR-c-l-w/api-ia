@@ -2,7 +2,7 @@
 
 from app.contexts.workout.domain.value_objects.exercise_definition import ExerciseDefinition
 from app.contexts.workout.domain.value_objects.user_profile import UserProfileForScoring
-from app.contexts.workout.infrastructure.data.exercises_catalog import EXERCISE_CATALOG, LEVEL_ORDER
+from app.contexts.workout.domain.data.exercises_catalog import EXERCISE_CATALOG, LEVEL_ORDER
 
 WEIGHT_OBJECTIVE = 0.40
 WEIGHT_LEVEL = 0.25
