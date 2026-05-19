@@ -1,7 +1,7 @@
 import asyncio
 
 from app.contexts.nutrition.application.use_cases.analyze_meal import AnalyzeMealUseCase
-from app.contexts.nutrition.infrastructure.vision.huggingface_provider import VisionDetection
+from app.contexts.nutrition.domain.models import VisionDetection
 from app.contexts.nutrition.presentation.schemas import NutritionAnalysisRequest
 
 

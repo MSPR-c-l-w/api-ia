@@ -1,15 +1,10 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from urllib import request
 from urllib.error import URLError
 
-
-@dataclass
-class VisionDetection:
-    label: str
-    confidence: float
+from app.contexts.nutrition.domain.models import VisionDetection
 
 
 class HuggingFaceVisionProvider:

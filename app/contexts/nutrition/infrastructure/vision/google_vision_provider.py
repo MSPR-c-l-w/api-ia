@@ -4,9 +4,7 @@ import json
 from urllib import request
 from urllib.error import URLError
 
-from app.contexts.nutrition.infrastructure.vision.huggingface_provider import (
-    VisionDetection,
-)
+from app.contexts.nutrition.domain.models import VisionDetection
 
 
 class GoogleVisionProvider:

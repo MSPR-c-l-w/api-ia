@@ -4,6 +4,14 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 
+@dataclass
+class VisionDetection:
+    """Value object representing a single food detection from a vision provider."""
+
+    label: str
+    confidence: float  # [0, 1]
+
+
 class ImbalanceStatus(str, Enum):
     OK = "OK"
     EXCES = "EXCES"

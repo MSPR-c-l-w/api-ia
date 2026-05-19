@@ -134,3 +134,7 @@ class NutritionLookupService:
             fibers_g=round(totals[4], 1),
             estimated=any_estimated,
         )
+
+    def is_food_label(self, label: str) -> bool:
+        """Implement NutritionLookupPort — delegates to the module-level function."""
+        return is_food_label(label)

@@ -1,17 +1,12 @@
-from typing import Protocol
-
-from app.contexts.nutrition.domain.models import MealStatus
+from app.contexts.nutrition.domain.models import MealStatus, VisionDetection
+from app.contexts.nutrition.domain.ports import (
+    CachePort,
+    LlmProviderPort,
+    NutritionLookupPort,
+    VisionProviderPort,
+)
 from app.contexts.nutrition.domain.services import NutritionImbalanceService
 from app.contexts.nutrition.domain.tdee import TdeeCalculator
-from app.contexts.nutrition.infrastructure.cache import AiCacheService
-from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
-from app.contexts.nutrition.infrastructure.nutrition_lookup import (
-    NutritionLookupService,
-    is_food_label,
-)
-from app.contexts.nutrition.infrastructure.vision.huggingface_provider import (
-    VisionDetection,
-)
 from app.contexts.nutrition.presentation.schemas import (
     DetectedFood,
     EstimatedMacros,
@@ -21,14 +16,6 @@ from app.contexts.nutrition.presentation.schemas import (
 )
 
 _CONFIDENCE_THRESHOLD = 0.5
-
-
-class VisionProvider(Protocol):
-    async def detect_foods(
-        self,
-        image_url: str | None,
-        image_base64: str | None,
-    ) -> list[VisionDetection]: ...
 
 
 class AnalyzeMealUseCase:
@@ -44,13 +31,17 @@ class AnalyzeMealUseCase:
 
     def __init__(
         self,
-        vision_providers: list[VisionProvider],
-        nutrition_lookup: NutritionLookupService | None = None,
+        vision_providers: list[VisionProviderPort],
+        nutrition_lookup: NutritionLookupPort | None = None,
         imbalance_service: NutritionImbalanceService | None = None,
-        llm_provider: LlmProvider | None = None,
-        cache: AiCacheService | None = None,
+        llm_provider: LlmProviderPort | None = None,
+        cache: CachePort | None = None,
         tdee_calculator: TdeeCalculator | None = None,
     ) -> None:
+        from app.contexts.nutrition.infrastructure.cache import AiCacheService
+        from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
+        from app.contexts.nutrition.infrastructure.nutrition_lookup import NutritionLookupService
+
         self._vision_providers = vision_providers
         self._nutrition_lookup = nutrition_lookup or NutritionLookupService()
         self._imbalance_service = imbalance_service or NutritionImbalanceService()
@@ -88,7 +79,7 @@ class AnalyzeMealUseCase:
         # 2. Confidence filtering + non-food filtering (#85)
         filtered = [
             d for d in detections
-            if d.confidence >= _CONFIDENCE_THRESHOLD and is_food_label(d.label)
+            if d.confidence >= _CONFIDENCE_THRESHOLD and self._nutrition_lookup.is_food_label(d.label)
         ]
 
         if filtered:

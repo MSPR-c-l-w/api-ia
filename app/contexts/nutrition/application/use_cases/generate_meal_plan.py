@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import logging
 
+from app.contexts.nutrition.domain.ports import LlmProviderPort
 from app.contexts.nutrition.domain.tdee import TdeeCalculator
-from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
 from app.contexts.nutrition.presentation.schemas import (
     DailyMealPlan,
     MealPlanRequest,
@@ -19,9 +19,11 @@ class GenerateMealPlanUseCase:
 
     def __init__(
         self,
-        llm_provider: LlmProvider | None = None,
+        llm_provider: LlmProviderPort | None = None,
         tdee_calculator: TdeeCalculator | None = None,
     ) -> None:
+        from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
+
         self._llm = llm_provider or LlmProvider(endpoint=None, api_key=None)
         self._tdee = tdee_calculator or TdeeCalculator()
 
