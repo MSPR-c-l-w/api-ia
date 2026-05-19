@@ -55,13 +55,82 @@
         }
       }
     },
-    "/api/nutrition/analyze": {
+    "/ai/nutrition/analyze": {
       "post": {
         "tags": [
           "nutrition"
         ],
         "summary": "Analyser un repas (stub)",
         "description": "Analyse nutritionnelle à partir d'une image ou d'un objectif utilisateur. Implémentation stub en attendant l'intégration Hugging Face.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NutritionAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NutritionAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corps de requête invalide"
+          }
+        }
+      }
+    },
+    "/ai/nutrition/meal-plan": {
+      "post": {
+        "tags": [
+          "nutrition"
+        ],
+        "summary": "Générer un plan repas 7 jours (stub)",
+        "description": "Génère un plan hebdomadaire personnalisé selon l'objectif, les contraintes alimentaires et les allergies.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealPlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corps de requête invalide"
+          }
+        }
+      }
+    },
+    "/api/nutrition/analyze": {
+      "post": {
+        "tags": [
+          "nutrition"
+        ],
+        "summary": "Analyser un repas (legacy)",
+        "description": "Alias de compatibilité vers `/ai/nutrition/analyze`.",
+        "deprecated": true,
         "requestBody": {
           "required": true,
           "content": {
@@ -310,8 +379,7 @@
           "detectedFoods": {
             "description": "Aliments détectés avec scores de confiance",
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/DetectedFood"
             },
             "title": "Detectedfoods",
             "type": "array"
@@ -325,10 +393,8 @@
             "type": "integer"
           },
           "estimatedMacros": {
-            "additionalProperties": true,
-            "description": "Macronutriments estimés (g)",
-            "title": "Estimatedmacros",
-            "type": "object"
+            "$ref": "#/components/schemas/EstimatedMacros",
+            "description": "Macronutriments estimés (g)"
           },
           "feedback": {
             "description": "Conseils textuels générés pour l'utilisateur",
@@ -355,6 +421,230 @@
           "modelStatus"
         ],
         "title": "NutritionAnalysisResponse",
+        "type": "object"
+      },
+      "DetectedFood": {
+        "properties": {
+          "label": {
+            "description": "Nom de l'aliment détecté",
+            "title": "Label",
+            "type": "string"
+          },
+          "confidence": {
+            "description": "Score de confiance du modèle",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Confidence",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "confidence"
+        ],
+        "title": "DetectedFood",
+        "type": "object"
+      },
+      "EstimatedMacros": {
+        "properties": {
+          "proteins_g": {
+            "description": "Protéines estimées (g)",
+            "minimum": 0,
+            "title": "Proteins G",
+            "type": "number"
+          },
+          "carbs_g": {
+            "description": "Glucides estimés (g)",
+            "minimum": 0,
+            "title": "Carbs G",
+            "type": "number"
+          },
+          "fats_g": {
+            "description": "Lipides estimés (g)",
+            "minimum": 0,
+            "title": "Fats G",
+            "type": "number"
+          }
+        },
+        "required": [
+          "proteins_g",
+          "carbs_g",
+          "fats_g"
+        ],
+        "title": "EstimatedMacros",
+        "type": "object"
+      },
+      "MealPlanRequest": {
+        "example": {
+          "allergies": [
+            "arachide"
+          ],
+          "dailyCaloriesTarget": 1900,
+          "dietaryConstraints": [
+            "vegetarien"
+          ],
+          "userGoal": "perte_de_poids"
+        },
+        "properties": {
+          "userGoal": {
+            "description": "Objectif nutritionnel de l'utilisateur",
+            "examples": [
+              "perte_de_poids",
+              "prise_de_masse",
+              "equilibre"
+            ],
+            "title": "Usergoal",
+            "type": "string"
+          },
+          "dietaryConstraints": {
+            "description": "Contraintes alimentaires déclarées",
+            "items": {
+              "type": "string"
+            },
+            "title": "Dietaryconstraints",
+            "type": "array"
+          },
+          "allergies": {
+            "description": "Allergies à exclure des propositions",
+            "items": {
+              "type": "string"
+            },
+            "title": "Allergies",
+            "type": "array"
+          },
+          "dailyCaloriesTarget": {
+            "anyOf": [
+              {
+                "maximum": 5000,
+                "minimum": 800,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Objectif calorique quotidien",
+            "title": "Dailycaloriestarget"
+          }
+        },
+        "required": [
+          "userGoal"
+        ],
+        "title": "MealPlanRequest",
+        "type": "object"
+      },
+      "MealPlanResponse": {
+        "example": {
+          "days": [
+            {
+              "breakfast": "Skyr + fruits rouges + flocons d'avoine",
+              "day": 1,
+              "dinner": "Saumon, brocoli vapeur, patate douce",
+              "estimatedCalories": 1870,
+              "lunch": "Salade quinoa, pois chiches, légumes croquants",
+              "snack": "Une pomme"
+            }
+          ],
+          "modelStatus": "stub_ready_for_llm",
+          "notes": [
+            "Plan généré en mode stub local.",
+            "Exclut les allergènes déclarés."
+          ],
+          "userGoal": "perte_de_poids"
+        },
+        "properties": {
+          "userGoal": {
+            "description": "Objectif utilisateur utilisé",
+            "title": "Usergoal",
+            "type": "string"
+          },
+          "days": {
+            "description": "Plan repas sur 7 jours",
+            "items": {
+              "$ref": "#/components/schemas/DailyMealPlan"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "notes": {
+            "description": "Informations complémentaires",
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "modelStatus": {
+            "description": "État du moteur de génération",
+            "examples": [
+              "stub_ready_for_llm"
+            ],
+            "title": "Modelstatus",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userGoal",
+          "days",
+          "notes",
+          "modelStatus"
+        ],
+        "title": "MealPlanResponse",
+        "type": "object"
+      },
+      "DailyMealPlan": {
+        "properties": {
+          "day": {
+            "description": "Jour du plan (1 à 7)",
+            "maximum": 7,
+            "minimum": 1,
+            "title": "Day",
+            "type": "integer"
+          },
+          "breakfast": {
+            "description": "Petit-déjeuner",
+            "title": "Breakfast",
+            "type": "string"
+          },
+          "lunch": {
+            "description": "Déjeuner",
+            "title": "Lunch",
+            "type": "string"
+          },
+          "dinner": {
+            "description": "Dîner",
+            "title": "Dinner",
+            "type": "string"
+          },
+          "snack": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Collation optionnelle",
+            "title": "Snack"
+          },
+          "estimatedCalories": {
+            "description": "Calories estimées sur la journée",
+            "minimum": 0,
+            "title": "Estimatedcalories",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "breakfast",
+          "lunch",
+          "dinner",
+          "estimatedCalories"
+        ],
+        "title": "DailyMealPlan",
         "type": "object"
       },
       "WorkoutProgramRequest": {

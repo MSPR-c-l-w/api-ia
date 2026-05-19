@@ -1,4 +1,6 @@
 from app.contexts.nutrition.presentation.schemas import (
+    DetectedFood,
+    EstimatedMacros,
     NutritionAnalysisRequest,
     NutritionAnalysisResponse,
 )
@@ -15,13 +17,9 @@ class AnalyzeMealUseCase:
         goal = payload.user_goal or "equilibre"
 
         return NutritionAnalysisResponse(
-            detected_foods=[{"label": "poulet-riz", "confidence": 0.84}],
+            detected_foods=[DetectedFood(label="poulet-riz", confidence=0.84)],
             estimated_calories=520,
-            estimated_macros={
-                "proteins_g": 32,
-                "carbs_g": 54,
-                "fats_g": 14,
-            },
+            estimated_macros=EstimatedMacros(proteins_g=32, carbs_g=54, fats_g=14),
             feedback=[
                 f"Repas compatible avec un objectif de {goal}.",
                 "Ajouter une source de fibres peut ameliorer l'equilibre nutritionnel.",

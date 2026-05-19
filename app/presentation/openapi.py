@@ -8,6 +8,8 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.contexts.nutrition.presentation.schemas import (
+    MealPlanRequest,
+    MealPlanResponse,
     NutritionAnalysisRequest,
     NutritionAnalysisResponse,
 )
@@ -41,6 +43,8 @@ def build_openapi_schema() -> dict[str, Any]:
         HealthResponse,
         NutritionAnalysisRequest,
         NutritionAnalysisResponse,
+        MealPlanRequest,
+        MealPlanResponse,
         WorkoutProgramRequest,
         WorkoutProgramResponse,
         WorkoutFeedbackRequest,
@@ -88,7 +92,7 @@ def build_openapi_schema() -> dict[str, Any]:
                     },
                 },
             },
-            "/api/nutrition/analyze": {
+            "/ai/nutrition/analyze": {
                 "post": {
                     "tags": ["nutrition"],
                     "summary": "Analyser un repas (stub)",
@@ -96,6 +100,46 @@ def build_openapi_schema() -> dict[str, Any]:
                         "Analyse nutritionnelle à partir d'une image ou d'un objectif utilisateur. "
                         "Implémentation stub en attendant l'intégration Hugging Face."
                     ),
+                    "requestBody": {
+                        "required": True,
+                        "content": json_content("NutritionAnalysisRequest"),
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Successful Response",
+                            "content": json_content("NutritionAnalysisResponse"),
+                        },
+                        "422": {"description": "Corps de requête invalide"},
+                    },
+                },
+            },
+            "/ai/nutrition/meal-plan": {
+                "post": {
+                    "tags": ["nutrition"],
+                    "summary": "Générer un plan repas 7 jours (stub)",
+                    "description": (
+                        "Génère un plan hebdomadaire personnalisé selon l'objectif, "
+                        "les contraintes alimentaires et les allergies."
+                    ),
+                    "requestBody": {
+                        "required": True,
+                        "content": json_content("MealPlanRequest"),
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Successful Response",
+                            "content": json_content("MealPlanResponse"),
+                        },
+                        "422": {"description": "Corps de requête invalide"},
+                    },
+                },
+            },
+            "/api/nutrition/analyze": {
+                "post": {
+                    "tags": ["nutrition"],
+                    "summary": "Analyser un repas (legacy)",
+                    "description": "Alias de compatibilité vers `/ai/nutrition/analyze`.",
+                    "deprecated": True,
                     "requestBody": {
                         "required": True,
                         "content": json_content("NutritionAnalysisRequest"),

@@ -1,6 +1,9 @@
 from functools import lru_cache
 
 from app.contexts.nutrition.application.use_cases.analyze_meal import AnalyzeMealUseCase
+from app.contexts.nutrition.application.use_cases.generate_meal_plan import (
+    GenerateMealPlanUseCase,
+)
 from app.contexts.workout.application.use_cases.create_workout_program import (
     CreateWorkoutProgramUseCase,
 )
@@ -29,6 +32,7 @@ class Container:
             self._fitness_profiles,
         )
         self.analyze_meal = AnalyzeMealUseCase()
+        self.generate_meal_plan = GenerateMealPlanUseCase()
 
 
 @lru_cache
