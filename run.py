@@ -1,7 +1,9 @@
-from app import create_app
-
-app = create_app()
-
+from app.config import settings
+from app.main import app
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=settings.port,
+        debug=settings.environment == "development",
+    )

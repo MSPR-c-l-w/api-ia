@@ -1,0 +1,41 @@
+---
+description: Clean architecture et contextes métier api-ia (MSPR HealthAI Coach)
+globs:
+  - app/**
+  - tests/**
+  - docs/**
+alwaysApply: true
+---
+
+# API IA — Clean architecture
+
+## Contextes (bounded contexts)
+
+- `app/contexts/workout` — moteur recommandations sport (MSPR § II.2)
+- `app/contexts/nutrition` — recommandations nutrition / vision (MSPR § II.1)
+- `app/shared` — exceptions applicatives, MongoDB transversal
+- `app/composition/container.py` — seul endroit pour instancier repos + use cases
+
+## Couches (par contexte)
+
+| Couche | Rôle | Interdit |
+|--------|------|----------|
+| `domain/` | Entités, value objects, services métier, `Protocol` repos | Flask, Motor, HTTP |
+| `application/use_cases/` | Orchestration, `execute()`, `ApplicationError` | `HTTPException` |
+| `infrastructure/` | MongoDB, APIs externes, fichiers données | Logique métier lourde |
+| `presentation/` (ou `app/routers`) | DTOs, routes, mapping HTTP | Accès DB direct |
+
+## Nouveau code
+
+1. Placer dans le bon contexte (`workout` / `nutrition`).
+2. Créer un use case dédié ; ne pas grossir les routers.
+3. Enregistrer dans `Container`.
+4. Tester : `pytest` ; mocks des `Protocol` pour les use cases.
+
+## Compatibilité
+
+`app/models/`, `app/services/`, `app/data/` = réexports legacy. **Ne pas** y ajouter de nouvelle logique.
+
+## Références
+
+- `AGENTS.md`, `docs/architecture.md`, `docs/mspr-contexte.md`

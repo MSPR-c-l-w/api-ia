@@ -1,0 +1,28 @@
+services:
+  api:
+    build: .
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      ENVIRONMENT: development
+      MONGODB_URI: mongodb://mongo:27017/healthai_coach
+      BACKEND_API_KEY: ${BACKEND_API_KEY:-dev-backend-key}
+      PORT: 8000
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mongo_data:

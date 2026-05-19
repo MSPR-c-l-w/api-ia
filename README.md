@@ -1,64 +1,108 @@
-# HealthAI Coach API
+# HealthAI Coach API (api-ia)
 
-Initialisation d'un backend Flask structure pour une API IA autour de deux axes:
+Micro-service **Flask** + **MongoDB** (Motor) pour l'analyse nutritionnelle et les recommandations sportives IA.
 
-- analyse nutritionnelle par vision ordinateur
-- recommandations sportives multi-criteres
+Partie de l'[EPIC #79](https://github.com/MSPR-c-l-w/backend/issues/79) (issues suivies sur le dépôt `backend`).
 
-Le projet est initialise avec une architecture simple, extensible, et documentee via OpenAPI.
+## Prérequis
 
-## Structure
+- **Python 3.12+**
+- **MongoDB 7** (local ou via Docker)
+- Clé API partagée avec le backend NestJS (`BACKEND_API_KEY` = `WORKOUT_SERVICE_API_KEY`)
+
+## Structure (clean architecture)
 
 ```text
 app/
-  api/
-    health.py
-    nutrition.py
-    recommendations.py
-  __init__.py
-  config.py
-  extensions.py
-  schemas.py
+  contexts/
+    workout/          # Moteur sport — domain, application, infrastructure
+    nutrition/        # Nutrition — use cases + stub vision
+  shared/             # MongoDB, exceptions applicatives
+  composition/        # Container (injection de dépendances)
+  routers/            # Blueprints Flask
+  main.py
+docs/
+  architecture.md
+  mspr-contexte.md
+  mongodb-schema.md
+AGENTS.md             # Guide agents IA
+openapi.json
 tests/
-run.py
-requirements.txt
 ```
 
-## Demarrage
+Voir [docs/architecture.md](docs/architecture.md) et [AGENTS.md](AGENTS.md).
 
-1. Creer un environnement virtuel
-2. Installer les dependances
-3. Lancer l'API
+## Variables d'environnement
+
+| Variable | Description |
+|----------|-------------|
+| `MONGODB_URI` | URI MongoDB (ex. `mongodb://localhost:27017/healthai_coach`) |
+| `BACKEND_API_KEY` | Clé partagée avec le backend NestJS — header `X-API-Key` sur `/recommendations/*` |
+| `PORT` | Port HTTP (défaut `8000`) |
+| `ENVIRONMENT` | `development` \| `test` \| `production` — en `production`, `/docs` est désactivé |
+| `SECRET_KEY` | Clé interne (réservée évolutions futures) |
+
+Copier `.env.example` vers `.env`.
+
+## Démarrage local
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\activate   # Linux/macOS : source .venv/bin/activate
 pip install -r requirements.txt
 python run.py
 ```
 
-## Endpoints disponibles
+API : http://127.0.0.1:8000
 
-- `GET /api/health/`
-- `POST /api/nutrition/analyze`
-- `POST /api/recommendations/workout`
+## Docker
 
-## Swagger
+```bash
+docker compose up --build
+```
 
-Une fois l'application lancee:
+Services : API (`8000`) + MongoDB (`27017`).
 
-- UI Swagger: `http://127.0.0.1:5000/docs/swagger`
-- Spec OpenAPI JSON: `http://127.0.0.1:5000/docs/openapi.json`
+## Endpoints
 
-## Suite du projet
+| Méthode | Chemin | Auth | Description |
+|---------|--------|------|-------------|
+| `GET` | `/health` | — | Santé du service |
+| `POST` | `/api/nutrition/analyze` | — | Analyse nutrition (stub) |
+| `POST` | `/recommendations/workout` | `X-API-Key` | Programme hebdomadaire |
+| `POST` | `/recommendations/workout/{id}/feedback` | `X-API-Key` | Retour utilisateur |
 
-Les endpoints `nutrition` et `recommendations` sont pour l'instant des stubs:
+## OpenAPI
 
-- `nutrition` est pret a recevoir un pipeline Hugging Face pour classifier une image de repas
-- `recommendations` est pret a etre branche a un moteur de filtrage + historique MongoDB
+- **Swagger UI** (développement) : http://127.0.0.1:8000/docs — ajouter le header `X-API-Key` dans l'UI pour tester `/recommendations/*`
+- **JSON live** : http://127.0.0.1:8000/openapi.json
+- **Export versionné** :
 
-## Prochaines etapes conseillees
+```bash
+python scripts/export_openapi.py
+```
 
-- brancher un vrai modele Hugging Face pour la classification food
-- connecter MongoDB pour stocker l'historique des recommandations
-- separer le moteur IA dans un micro-service dedie si tu veux coller a l'architecture MSPR
+Génère `openapi.json` à la racine (à committer après modification des routes ou schémas).
+
+## Tests
+
+```bash
+pytest
+```
+
+`ENVIRONMENT=test` désactive la connexion MongoDB au démarrage (voir `tests/conftest.py`).
+
+## Schéma MongoDB
+
+Voir [docs/mongodb-schema.md](docs/mongodb-schema.md).
+
+```bash
+python scripts/seed_mongodb.py
+```
+
+## Intégration backend (#99)
+
+Le backend NestJS appelle ce service via `WORKOUT_SERVICE_URL` + `WORKOUT_SERVICE_API_KEY` :
+
+- `POST {WORKOUT_SERVICE_URL}/recommendations/workout`
+- Référence SQL : `AiWorkoutRecommendation.microservice_ref_id` = `programId` MongoDB

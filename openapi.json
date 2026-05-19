@@ -1,0 +1,742 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HealthAI Coach API",
+    "version": "0.2.0",
+    "description": "\nMicro-service **HealthAI Coach** : moteur de recommandations sportives et analyse nutrition.\n\n## Authentification inter-services\n\nLes routes `/recommendations/*` exigent le header **`X-API-Key`**, identique à la variable\n`BACKEND_API_KEY` côté api-ia et `WORKOUT_SERVICE_API_KEY` côté backend NestJS (#99).\n\n## Persistance\n\nLes programmes et feedbacks sont stockés dans **MongoDB** (`workout_programs`, `workout_feedbacks`,\n`user_fitness_profiles`). Voir [docs/mongodb-schema.md](https://github.com/MSPR-c-l-w/api-ia/blob/main/docs/mongodb-schema.md).\n",
+    "contact": {
+      "name": "MSPR-c-l-w",
+      "url": "https://github.com/MSPR-c-l-w/api-ia"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8000",
+      "description": "Développement local"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Docker Compose (port mappé)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "health",
+      "description": "Sonde de disponibilité du micro-service."
+    },
+    {
+      "name": "nutrition",
+      "description": "Analyse nutritionnelle (stub — intégration Hugging Face à venir)."
+    },
+    {
+      "name": "recommendations",
+      "description": "Programmes d'entraînement hebdomadaires et feedback utilisateur. Requiert le header `X-API-Key` (clé partagée avec le backend NestJS)."
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Sonde de santé",
+        "description": "Vérifie que l'API répond. Aucune authentification requise.",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nutrition/analyze": {
+      "post": {
+        "tags": [
+          "nutrition"
+        ],
+        "summary": "Analyser un repas (stub)",
+        "description": "Analyse nutritionnelle à partir d'une image ou d'un objectif utilisateur. Implémentation stub en attendant l'intégration Hugging Face.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NutritionAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NutritionAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corps de requête invalide"
+          }
+        }
+      }
+    },
+    "/recommendations/workout": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Générer un programme d'entraînement hebdomadaire",
+        "description": "Construit un programme sur 7 jours selon le profil utilisateur, avec rotation anti-répétition et persistance MongoDB.",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkoutProgramRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutProgramResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Données utilisateur insuffisantes (`INSUFFICIENT_USER_DATA`)"
+          },
+          "401": {
+            "description": "Clé API invalide ou absente (`INVALID_API_KEY`)"
+          },
+          "503": {
+            "description": "MongoDB indisponible (`MONGODB_UNAVAILABLE`)"
+          }
+        }
+      }
+    },
+    "/recommendations/workout/{program_id}/feedback": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Soumettre un retour sur un programme généré",
+        "description": "Enregistre le feedback, met à jour le profil sportif MongoDB (niveau, limitations temporaires 30 jours).",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Identifiant MongoDB du programme (`_id` hex)"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkoutFeedbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutFeedbackResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Programme introuvable (`PROGRAM_NOT_FOUND`)"
+          },
+          "401": {
+            "description": "Clé API invalide ou absente (`INVALID_API_KEY`)"
+          },
+          "422": {
+            "description": "Validation du corps de requête échouée"
+          },
+          "503": {
+            "description": "MongoDB indisponible (`MONGODB_UNAVAILABLE`)"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "example": {
+          "status": "ok",
+          "timestamp": "2026-05-16T12:00:00Z"
+        },
+        "properties": {
+          "status": {
+            "description": "État du service",
+            "examples": [
+              "ok"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "Horodatage UTC de la sonde",
+            "examples": [
+              "2026-05-16T12:00:00Z"
+            ],
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "timestamp"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "NutritionAnalysisRequest": {
+        "example": {
+          "imageUrl": "https://example.com/meal.jpg",
+          "userGoal": "perte_de_poids"
+        },
+        "properties": {
+          "imageUrl": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "URL publique de la photo du repas",
+            "examples": [
+              "https://example.com/meal.jpg"
+            ],
+            "title": "Imageurl"
+          },
+          "imageBase64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Image encodée en base64 (alternative à imageUrl)",
+            "title": "Imagebase64"
+          },
+          "userGoal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Objectif nutritionnel de l'utilisateur",
+            "examples": [
+              "perte_de_poids",
+              "prise_de_masse",
+              "equilibre"
+            ],
+            "title": "Usergoal"
+          }
+        },
+        "title": "NutritionAnalysisRequest",
+        "type": "object"
+      },
+      "NutritionAnalysisResponse": {
+        "example": {
+          "detectedFoods": [
+            {
+              "confidence": 0.84,
+              "label": "poulet-riz"
+            }
+          ],
+          "estimatedCalories": 520,
+          "estimatedMacros": {
+            "carbs_g": 54,
+            "fats_g": 14,
+            "proteins_g": 32
+          },
+          "feedback": [
+            "Repas équilibré pour un objectif de perte de poids."
+          ],
+          "modelStatus": "stub_ready_for_huggingface"
+        },
+        "properties": {
+          "detectedFoods": {
+            "description": "Aliments détectés avec scores de confiance",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Detectedfoods",
+            "type": "array"
+          },
+          "estimatedCalories": {
+            "description": "Estimation calorique totale (kcal)",
+            "examples": [
+              520
+            ],
+            "title": "Estimatedcalories",
+            "type": "integer"
+          },
+          "estimatedMacros": {
+            "additionalProperties": true,
+            "description": "Macronutriments estimés (g)",
+            "title": "Estimatedmacros",
+            "type": "object"
+          },
+          "feedback": {
+            "description": "Conseils textuels générés pour l'utilisateur",
+            "items": {
+              "type": "string"
+            },
+            "title": "Feedback",
+            "type": "array"
+          },
+          "modelStatus": {
+            "description": "État du modèle IA (stub ou modèle actif)",
+            "examples": [
+              "stub_ready_for_huggingface"
+            ],
+            "title": "Modelstatus",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detectedFoods",
+          "estimatedCalories",
+          "estimatedMacros",
+          "feedback",
+          "modelStatus"
+        ],
+        "title": "NutritionAnalysisResponse",
+        "type": "object"
+      },
+      "WorkoutProgramRequest": {
+        "example": {
+          "limitations": [
+            "mal au genou"
+          ],
+          "materiel": [
+            "tapis",
+            "haltères"
+          ],
+          "niveau": "debutant",
+          "objectif": "renforcement",
+          "preferences": [
+            "faible impact"
+          ],
+          "userId": 42
+        },
+        "properties": {
+          "userId": {
+            "description": "Identifiant utilisateur (FK logique vers User.id NestJS)",
+            "examples": [
+              42
+            ],
+            "minimum": 1,
+            "title": "Userid",
+            "type": "integer"
+          },
+          "objectif": {
+            "description": "Objectif sportif principal",
+            "examples": [
+              "renforcement",
+              "perte_de_poids",
+              "endurance"
+            ],
+            "minLength": 1,
+            "title": "Objectif",
+            "type": "string"
+          },
+          "niveau": {
+            "description": "Niveau de forme (`debutant`, `intermediaire`, `avance`, `athlete`)",
+            "examples": [
+              "debutant"
+            ],
+            "minLength": 1,
+            "title": "Niveau",
+            "type": "string"
+          },
+          "materiel": {
+            "description": "Équipement disponible",
+            "examples": [
+              [
+                "tapis",
+                "haltères"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Materiel",
+            "type": "array"
+          },
+          "preferences": {
+            "description": "Préférences d'entraînement (tags)",
+            "examples": [
+              [
+                "faible impact",
+                "cardio"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Preferences",
+            "type": "array"
+          },
+          "limitations": {
+            "description": "Blessures ou contraintes à respecter",
+            "examples": [
+              [
+                "mal au genou"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "userId",
+          "objectif",
+          "niveau"
+        ],
+        "title": "WorkoutProgramRequest",
+        "type": "object"
+      },
+      "WorkoutProgramResponse": {
+        "example": {
+          "generatedAt": "2026-05-16T12:00:00Z",
+          "programId": "665a1b2c3d4e5f6789012345",
+          "programme": [],
+          "statut": "ACTIVE",
+          "userId": 42
+        },
+        "properties": {
+          "programId": {
+            "description": "Identifiant MongoDB du programme (référencé par le backend SQL)",
+            "title": "Programid",
+            "type": "string"
+          },
+          "userId": {
+            "description": "Utilisateur",
+            "examples": [
+              42
+            ],
+            "title": "Userid",
+            "type": "integer"
+          },
+          "statut": {
+            "description": "Statut du programme",
+            "examples": [
+              "ACTIVE",
+              "ARCHIVED"
+            ],
+            "title": "Statut",
+            "type": "string"
+          },
+          "programme": {
+            "description": "Planning sur 7 jours",
+            "items": {
+              "$ref": "#/components/schemas/WorkoutDayResponse"
+            },
+            "title": "Programme",
+            "type": "array"
+          },
+          "generatedAt": {
+            "description": "Date de génération",
+            "format": "date-time",
+            "title": "Generatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "programId",
+          "userId",
+          "statut",
+          "programme",
+          "generatedAt"
+        ],
+        "title": "WorkoutProgramResponse",
+        "type": "object"
+      },
+      "WorkoutDayResponse": {
+        "properties": {
+          "jour": {
+            "description": "Jour de la semaine",
+            "examples": [
+              "lundi"
+            ],
+            "title": "Jour",
+            "type": "string"
+          },
+          "isRestDay": {
+            "description": "Jour de repos",
+            "examples": [
+              false
+            ],
+            "title": "Isrestday",
+            "type": "boolean"
+          },
+          "estimatedSessionMinutes": {
+            "description": "Durée totale estimée de la séance (minutes)",
+            "examples": [
+              45
+            ],
+            "title": "Estimatedsessionminutes",
+            "type": "integer"
+          },
+          "exercices": {
+            "description": "Exercices planifiés pour la journée",
+            "items": {
+              "$ref": "#/components/schemas/WorkoutSessionExerciseResponse"
+            },
+            "title": "Exercices",
+            "type": "array"
+          }
+        },
+        "required": [
+          "jour",
+          "isRestDay",
+          "estimatedSessionMinutes"
+        ],
+        "title": "WorkoutDayResponse",
+        "type": "object"
+      },
+      "WorkoutSessionExerciseResponse": {
+        "properties": {
+          "id": {
+            "description": "Identifiant exercice (catalogue interne)",
+            "examples": [
+              "pont-fessier"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "sets": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Nombre de séries",
+            "examples": [
+              3
+            ],
+            "title": "Sets"
+          },
+          "reps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Répétitions par série",
+            "examples": [
+              12
+            ],
+            "title": "Reps"
+          },
+          "duree": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Durée en minutes si applicable",
+            "examples": [
+              15
+            ],
+            "title": "Duree"
+          },
+          "estimatedDurationMinutes": {
+            "description": "Durée estimée de l'exercice en minutes",
+            "examples": [
+              10
+            ],
+            "title": "Estimateddurationminutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "estimatedDurationMinutes"
+        ],
+        "title": "WorkoutSessionExerciseResponse",
+        "type": "object"
+      },
+      "WorkoutFeedbackRequest": {
+        "example": {
+          "exercicesProblematiques": [
+            "squat-pdc"
+          ],
+          "rating": 4,
+          "tropDifficile": false,
+          "tropFacile": false
+        },
+        "properties": {
+          "rating": {
+            "description": "Note globale du programme (1–5)",
+            "examples": [
+              4
+            ],
+            "maximum": 5,
+            "minimum": 1,
+            "title": "Rating",
+            "type": "integer"
+          },
+          "tropDifficile": {
+            "default": false,
+            "description": "Le programme était trop difficile",
+            "examples": [
+              false
+            ],
+            "title": "Tropdifficile",
+            "type": "boolean"
+          },
+          "tropFacile": {
+            "default": false,
+            "description": "Le programme était trop facile",
+            "examples": [
+              false
+            ],
+            "title": "Tropfacile",
+            "type": "boolean"
+          },
+          "exercicesProblematiques": {
+            "description": "IDs d'exercices à éviter temporairement (30 jours)",
+            "examples": [
+              [
+                "squat-pdc"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Exercicesproblematiques",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rating"
+        ],
+        "title": "WorkoutFeedbackRequest",
+        "type": "object"
+      },
+      "WorkoutFeedbackResponse": {
+        "properties": {
+          "feedbackId": {
+            "description": "Identifiant MongoDB du feedback",
+            "title": "Feedbackid",
+            "type": "string"
+          },
+          "programId": {
+            "description": "Programme concerné",
+            "title": "Programid",
+            "type": "string"
+          },
+          "userId": {
+            "description": "Utilisateur",
+            "examples": [
+              42
+            ],
+            "title": "Userid",
+            "type": "integer"
+          },
+          "profileNiveau": {
+            "description": "Niveau sportif après ajustement éventuel",
+            "examples": [
+              "intermediaire"
+            ],
+            "title": "Profileniveau",
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "Horodatage du feedback",
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "feedbackId",
+          "programId",
+          "userId",
+          "profileNiveau",
+          "createdAt"
+        ],
+        "title": "WorkoutFeedbackResponse",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Clé partagée backend NestJS ↔ micro-service"
+      }
+    }
+  }
+}
