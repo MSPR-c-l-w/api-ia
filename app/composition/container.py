@@ -6,6 +6,7 @@ from app.contexts.nutrition.application.use_cases.generate_meal_plan import (
     GenerateMealPlanUseCase,
 )
 from app.contexts.nutrition.domain.services import NutritionImbalanceService
+from app.contexts.nutrition.domain.tdee import TdeeCalculator
 from app.contexts.nutrition.infrastructure.cache import AiCacheService
 from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
 from app.contexts.nutrition.infrastructure.nutrition_lookup import NutritionLookupService
@@ -60,6 +61,7 @@ class Container:
         )
         nutrition_lookup = NutritionLookupService()
         imbalance_service = NutritionImbalanceService()
+        tdee_calculator = TdeeCalculator()
         ai_cache = AiCacheService()
 
         self.analyze_meal = AnalyzeMealUseCase(
@@ -68,8 +70,12 @@ class Container:
             imbalance_service=imbalance_service,
             llm_provider=llm_provider,
             cache=ai_cache,
+            tdee_calculator=tdee_calculator,
         )
-        self.generate_meal_plan = GenerateMealPlanUseCase(llm_provider=llm_provider)
+        self.generate_meal_plan = GenerateMealPlanUseCase(
+            llm_provider=llm_provider,
+            tdee_calculator=tdee_calculator,
+        )
 
 
 @lru_cache

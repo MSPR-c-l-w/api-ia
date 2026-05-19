@@ -313,8 +313,13 @@
       },
       "NutritionAnalysisRequest": {
         "example": {
+          "ageYears": 30,
+          "gender": "male",
+          "heightCm": 175.0,
           "imageUrl": "https://example.com/meal.jpg",
-          "userGoal": "perte_de_poids"
+          "physicalActivityLevel": "moderately_active",
+          "userGoal": "perte_de_poids",
+          "weightKg": 75.0
         },
         "properties": {
           "imageUrl": {
@@ -366,6 +371,103 @@
               "equilibre"
             ],
             "title": "Usergoal"
+          },
+          "weightKg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 500,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Poids de l'utilisateur en kg (HealthProfile.weight)",
+            "title": "Weightkg"
+          },
+          "heightCm": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 300,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Taille de l'utilisateur en cm (User.height)",
+            "title": "Heightcm"
+          },
+          "ageYears": {
+            "anyOf": [
+              {
+                "maximum": 120,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Âge de l'utilisateur en années (calculé depuis User.date_of_birth)",
+            "title": "Ageyears"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Sexe : 'male' | 'female' (User.gender)",
+            "examples": [
+              "male",
+              "female"
+            ],
+            "title": "Gender"
+          },
+          "physicalActivityLevel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Niveau d'activité physique (HealthProfile.physical_activity_level)",
+            "examples": [
+              "sedentary",
+              "lightly_active",
+              "moderately_active",
+              "very_active",
+              "extra_active"
+            ],
+            "title": "Physicalactivitylevel"
+          },
+          "dailyCaloriesTarget": {
+            "anyOf": [
+              {
+                "maximum": 6000,
+                "minimum": 800,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Objectif calorique quotidien (HealthProfile.daily_calories_target) — remplace le calcul TDEE si fourni",
+            "title": "Dailycaloriestarget"
           }
         },
         "title": "NutritionAnalysisRequest",
@@ -564,6 +666,7 @@
       },
       "MealPlanRequest": {
         "example": {
+          "ageYears": 28,
           "allergies": [
             "arachide"
           ],
@@ -571,7 +674,11 @@
           "dietaryConstraints": [
             "vegetarien"
           ],
-          "userGoal": "perte_de_poids"
+          "gender": "female",
+          "heightCm": 168.0,
+          "physicalActivityLevel": "lightly_active",
+          "userGoal": "perte_de_poids",
+          "weightKg": 70.0
         },
         "properties": {
           "userGoal": {
@@ -612,8 +719,86 @@
               }
             ],
             "default": null,
-            "description": "Objectif calorique quotidien",
+            "description": "Objectif calorique quotidien (HealthProfile.daily_calories_target) — remplace le calcul TDEE si fourni",
             "title": "Dailycaloriestarget"
+          },
+          "weightKg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 500,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Poids en kg (HealthProfile.weight)",
+            "title": "Weightkg"
+          },
+          "heightCm": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 300,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Taille en cm (User.height)",
+            "title": "Heightcm"
+          },
+          "ageYears": {
+            "anyOf": [
+              {
+                "maximum": 120,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Âge en années (calculé depuis User.date_of_birth)",
+            "title": "Ageyears"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Sexe : 'male' | 'female' (User.gender)",
+            "title": "Gender"
+          },
+          "physicalActivityLevel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Niveau d'activité physique (HealthProfile.physical_activity_level)",
+            "examples": [
+              "sedentary",
+              "lightly_active",
+              "moderately_active",
+              "very_active",
+              "extra_active"
+            ],
+            "title": "Physicalactivitylevel"
           }
         },
         "required": [

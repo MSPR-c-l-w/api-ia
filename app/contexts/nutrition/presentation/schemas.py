@@ -31,6 +31,11 @@ class NutritionAnalysisRequest(BaseModel):
             "example": {
                 "imageUrl": "https://example.com/meal.jpg",
                 "userGoal": "perte_de_poids",
+                "weightKg": 75.0,
+                "heightCm": 175.0,
+                "ageYears": 30,
+                "gender": "male",
+                "physicalActivityLevel": "moderately_active",
             },
         },
     )
@@ -51,6 +56,46 @@ class NutritionAnalysisRequest(BaseModel):
         alias="userGoal",
         description="Objectif nutritionnel de l'utilisateur",
         examples=["perte_de_poids", "prise_de_masse", "equilibre"],
+    )
+    # Biometric fields (from backend User + HealthProfile)
+    weight_kg: float | None = Field(
+        default=None,
+        alias="weightKg",
+        gt=0,
+        le=500,
+        description="Poids de l'utilisateur en kg (HealthProfile.weight)",
+    )
+    height_cm: float | None = Field(
+        default=None,
+        alias="heightCm",
+        gt=0,
+        le=300,
+        description="Taille de l'utilisateur en cm (User.height)",
+    )
+    age_years: int | None = Field(
+        default=None,
+        alias="ageYears",
+        ge=1,
+        le=120,
+        description="Âge de l'utilisateur en années (calculé depuis User.date_of_birth)",
+    )
+    gender: str | None = Field(
+        default=None,
+        description="Sexe : 'male' | 'female' (User.gender)",
+        examples=["male", "female"],
+    )
+    physical_activity_level: str | None = Field(
+        default=None,
+        alias="physicalActivityLevel",
+        description="Niveau d'activité physique (HealthProfile.physical_activity_level)",
+        examples=["sedentary", "lightly_active", "moderately_active", "very_active", "extra_active"],
+    )
+    daily_calories_target: int | None = Field(
+        default=None,
+        alias="dailyCaloriesTarget",
+        ge=800,
+        le=6000,
+        description="Objectif calorique quotidien (HealthProfile.daily_calories_target) — remplace le calcul TDEE si fourni",
     )
 
 
@@ -117,6 +162,11 @@ class MealPlanRequest(BaseModel):
                 "dietaryConstraints": ["vegetarien"],
                 "allergies": ["arachide"],
                 "dailyCaloriesTarget": 1900,
+                "weightKg": 70.0,
+                "heightCm": 168.0,
+                "ageYears": 28,
+                "gender": "female",
+                "physicalActivityLevel": "lightly_active",
             },
         },
     )
@@ -140,7 +190,39 @@ class MealPlanRequest(BaseModel):
         ge=800,
         le=5000,
         alias="dailyCaloriesTarget",
-        description="Objectif calorique quotidien",
+        description="Objectif calorique quotidien (HealthProfile.daily_calories_target) — remplace le calcul TDEE si fourni",
+    )
+    # Biometric fields
+    weight_kg: float | None = Field(
+        default=None,
+        alias="weightKg",
+        gt=0,
+        le=500,
+        description="Poids en kg (HealthProfile.weight)",
+    )
+    height_cm: float | None = Field(
+        default=None,
+        alias="heightCm",
+        gt=0,
+        le=300,
+        description="Taille en cm (User.height)",
+    )
+    age_years: int | None = Field(
+        default=None,
+        alias="ageYears",
+        ge=1,
+        le=120,
+        description="Âge en années (calculé depuis User.date_of_birth)",
+    )
+    gender: str | None = Field(
+        default=None,
+        description="Sexe : 'male' | 'female' (User.gender)",
+    )
+    physical_activity_level: str | None = Field(
+        default=None,
+        alias="physicalActivityLevel",
+        description="Niveau d'activité physique (HealthProfile.physical_activity_level)",
+        examples=["sedentary", "lightly_active", "moderately_active", "very_active", "extra_active"],
     )
 
 

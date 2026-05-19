@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 
+from app.contexts.nutrition.domain.tdee import TdeeCalculator
 from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
 from app.contexts.nutrition.presentation.schemas import (
     DailyMealPlan,
@@ -16,15 +17,18 @@ logger = logging.getLogger(__name__)
 class GenerateMealPlanUseCase:
     """Generates a 7-day personalised meal plan via LLM with a local stub fallback."""
 
-    def __init__(self, llm_provider: LlmProvider | None = None) -> None:
+    def __init__(
+        self,
+        llm_provider: LlmProvider | None = None,
+        tdee_calculator: TdeeCalculator | None = None,
+    ) -> None:
         self._llm = llm_provider or LlmProvider(endpoint=None, api_key=None)
+        self._tdee = tdee_calculator or TdeeCalculator()
 
     async def execute(self, payload: MealPlanRequest) -> MealPlanResponse:
         constraints = {item.lower() for item in payload.dietary_constraints}
         allergies = {item.lower() for item in payload.allergies}
-        daily_calories = payload.daily_calories_target or (
-            1900 if payload.user_goal == "perte_de_poids" else 2300
-        )
+        daily_calories = self._resolve_calories(payload)
 
         # Try LLM-generated plan first (#89/#90)
         llm_days = await self._try_llm_plan(payload, daily_calories)
@@ -49,6 +53,30 @@ class GenerateMealPlanUseCase:
             ],
             modelStatus="stub_ready_for_llm",
         )
+
+    def _resolve_calories(self, payload: MealPlanRequest) -> int:
+        """Return daily caloric target: TDEE (if biometrics) > explicit target > goal default."""
+        if payload.daily_calories_target:
+            return payload.daily_calories_target
+
+        has_biometrics = (
+            payload.weight_kg is not None
+            and payload.height_cm is not None
+            and payload.age_years is not None
+            and payload.gender is not None
+        )
+        if has_biometrics:
+            profile = self._tdee.compute(
+                weight_kg=payload.weight_kg,
+                height_cm=payload.height_cm,
+                age_years=payload.age_years,
+                gender=payload.gender,
+                physical_activity_level=payload.physical_activity_level or "moderately_active",
+                goal=payload.user_goal,
+            )
+            return int(profile.daily_calories_target)
+
+        return 1900 if payload.user_goal == "perte_de_poids" else 2300
 
     async def _try_llm_plan(
         self, payload: MealPlanRequest, daily_calories: int
@@ -109,3 +137,5 @@ class GenerateMealPlanUseCase:
             )
             for day in range(1, 8)
         ]
+
+

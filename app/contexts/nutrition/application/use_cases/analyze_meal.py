@@ -2,6 +2,7 @@ from typing import Protocol
 
 from app.contexts.nutrition.domain.models import MealStatus
 from app.contexts.nutrition.domain.services import NutritionImbalanceService
+from app.contexts.nutrition.domain.tdee import TdeeCalculator
 from app.contexts.nutrition.infrastructure.cache import AiCacheService
 from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
 from app.contexts.nutrition.infrastructure.nutrition_lookup import (
@@ -36,7 +37,8 @@ class AnalyzeMealUseCase:
       1. Vision detection (HuggingFace → Google Vision fallback) with caching (#91)
       2. Confidence-threshold + non-food filtering (#85)
       3. Macro computation via embedded nutrition table (#86)
-      4. Nutritional imbalance detection (#88)
+      4. Nutritional imbalance detection with personalised TDEE targets when
+         biometrics are provided (#88)
       5. Personalised suggestions via LLM (with static fallback) (#89)
     """
 
@@ -47,12 +49,14 @@ class AnalyzeMealUseCase:
         imbalance_service: NutritionImbalanceService | None = None,
         llm_provider: LlmProvider | None = None,
         cache: AiCacheService | None = None,
+        tdee_calculator: TdeeCalculator | None = None,
     ) -> None:
         self._vision_providers = vision_providers
         self._nutrition_lookup = nutrition_lookup or NutritionLookupService()
         self._imbalance_service = imbalance_service or NutritionImbalanceService()
         self._llm_provider = llm_provider or LlmProvider(endpoint=None, api_key=None)
         self._cache = cache or AiCacheService()
+        self._tdee_calculator = tdee_calculator or TdeeCalculator()
 
     async def execute(self, payload: NutritionAnalysisRequest) -> NutritionAnalysisResponse:
         goal = payload.user_goal or "equilibre"
@@ -101,9 +105,12 @@ class AnalyzeMealUseCase:
         food_labels = [f.label for f in detected_foods]
         macros = self._nutrition_lookup.compute_macros(food_labels)
 
-        # 4. Imbalance detection (#88)
+        # 4. Build personalised health profile from biometrics (#88)
+        health_profile = self._resolve_health_profile(payload, goal)
+
+        # 5. Imbalance detection (#88)
         nutrient_details, meal_status = self._imbalance_service.detect_imbalances(
-            macros=macros, goal=goal
+            macros=macros, health_profile=health_profile
         )
 
         # Build imbalance tokens for LLM prompt and cache key
@@ -113,7 +120,7 @@ class AnalyzeMealUseCase:
             if d.status.value != "OK"
         ]
 
-        # 5. LLM suggestions (with cache, TTL 24 h) (#89)
+        # 6. LLM suggestions (with cache, TTL 24 h) (#89)
         llm_cache_key = self._cache.llm_key(goal, imbalance_tokens)
         feedback: list[str] | None = self._cache.get(llm_cache_key)
         if feedback is None:
@@ -147,3 +154,38 @@ class AnalyzeMealUseCase:
             feedback=feedback,
             model_status=model_status,
         )
+
+    def _resolve_health_profile(self, payload: NutritionAnalysisRequest, goal: str):
+        """Compute a personalised HealthProfile from biometrics when available,
+        otherwise fall back to goal-based static profiles."""
+        from app.contexts.nutrition.domain.models import GOAL_PROFILES, HealthProfile
+
+        # If all required biometric fields are provided, compute real TDEE
+        has_biometrics = (
+            payload.weight_kg is not None
+            and payload.height_cm is not None
+            and payload.age_years is not None
+            and payload.gender is not None
+        )
+        if has_biometrics:
+            profile = self._tdee_calculator.compute(
+                weight_kg=payload.weight_kg,
+                height_cm=payload.height_cm,
+                age_years=payload.age_years,
+                gender=payload.gender,
+                physical_activity_level=payload.physical_activity_level or "moderately_active",
+                goal=goal,
+            )
+            # Allow manual override of daily_calories_target
+            if payload.daily_calories_target:
+                profile.daily_calories_target = float(payload.daily_calories_target)
+            return profile
+
+        # If only daily_calories_target is provided without full biometrics
+        if payload.daily_calories_target:
+            base = GOAL_PROFILES.get(goal) or HealthProfile()
+            base.daily_calories_target = float(payload.daily_calories_target)
+            return base
+
+        # Full static fallback
+        return GOAL_PROFILES.get(goal) or HealthProfile()
