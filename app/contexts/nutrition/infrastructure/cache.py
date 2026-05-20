@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
 import time
 from typing import Any
 
@@ -17,6 +18,8 @@ logger = logging.getLogger(__name__)
 class AiCacheService:
     """Thread-safe in-memory key/value cache with per-entry TTL.
 
+    Uses threading.Lock for synchronization to ensure safe access from
+    multiple concurrent requests in async/ASGI environments.
     Cache keys are derived from content hashes so callers never have to
     manage key construction themselves.
     """
@@ -25,28 +28,31 @@ class AiCacheService:
         self._store: dict[str, tuple[Any, float]] = {}
         self._hits = 0
         self._misses = 0
+        self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Low-level get/set
     # ------------------------------------------------------------------
 
     def get(self, key: str) -> Any | None:
-        entry = self._store.get(key)
-        if entry is None:
-            self._misses += 1
-            return None
-        value, expires_at = entry
-        if time.monotonic() > expires_at:
-            del self._store[key]
-            self._misses += 1
-            return None
-        self._hits += 1
-        logger.debug("Cache HIT  key=%s", key)
-        return value
+        with self._lock:
+            entry = self._store.get(key)
+            if entry is None:
+                self._misses += 1
+                return None
+            value, expires_at = entry
+            if time.monotonic() > expires_at:
+                del self._store[key]
+                self._misses += 1
+                return None
+            self._hits += 1
+            logger.debug("Cache HIT  key=%s", key)
+            return value
 
     def set(self, key: str, value: Any, ttl_seconds: int = 3600) -> None:
-        self._store[key] = (value, time.monotonic() + ttl_seconds)
-        logger.debug("Cache SET  key=%s  ttl=%ds", key, ttl_seconds)
+        with self._lock:
+            self._store[key] = (value, time.monotonic() + ttl_seconds)
+            logger.debug("Cache SET  key=%s  ttl=%ds", key, ttl_seconds)
 
     # ------------------------------------------------------------------
     # Semantic key builders
@@ -66,7 +72,8 @@ class AiCacheService:
 
     @property
     def stats(self) -> dict[str, int]:
-        return {"hits": self._hits, "misses": self._misses}
+        with self._lock:
+            return {"hits": self._hits, "misses": self._misses}
 
     # ------------------------------------------------------------------
     # Internals

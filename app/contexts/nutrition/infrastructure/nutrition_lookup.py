@@ -8,6 +8,7 @@ flagged with ``estimated=True``.
 from __future__ import annotations
 
 import logging
+import re
 
 from app.contexts.nutrition.domain.models import Macros
 
@@ -75,6 +76,7 @@ _DEFAULT: tuple[float, float, float, float, float] = (150.0, 8.0, 18.0, 5.0, 1.5
 DEFAULT_SERVING_G: float = 150.0
 
 # Labels that vision models may return which are not food
+# Use word boundaries to avoid matching substrings (e.g., "table" matching "vegetable")
 _NON_FOOD_TOKENS = frozenset(
     {
         "table", "plate", "bowl", "dish", "fork", "knife", "spoon", "glass",
@@ -85,9 +87,17 @@ _NON_FOOD_TOKENS = frozenset(
 
 
 def is_food_label(label: str) -> bool:
-    """Return False for labels that are clearly not food items."""
+    """Return False for labels that are clearly not food items.
+
+    Uses word-boundary matching to avoid false negatives (e.g., "table" should not
+    match "vegetable").
+    """
     lower = label.lower()
-    return not any(token in lower for token in _NON_FOOD_TOKENS)
+    # Check each token with word boundaries
+    for token in _NON_FOOD_TOKENS:
+        if re.search(r'\b' + re.escape(token) + r'\b', lower):
+            return False
+    return True
 
 
 class NutritionLookupService:

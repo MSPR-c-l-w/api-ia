@@ -57,7 +57,6 @@ class AnalyzeMealUseCase:
         cache_key = self._cache.image_key(image_url, payload.image_base64)
         cached_detections: list[VisionDetection] | None = self._cache.get(cache_key)
 
-        provider_labels = ["huggingface", "google_vision"]
         provider_status = "stub"
         detections: list[VisionDetection] = []
 
@@ -72,9 +71,11 @@ class AnalyzeMealUseCase:
                 )
                 if provider_result:
                     detections = provider_result
-                    provider_status = provider_labels[index]
+                    provider_status = f"provider_{index}"
+                    # Only cache successful results
+                    self._cache.set(cache_key, detections, ttl_seconds=3600)
                     break
-            self._cache.set(cache_key, detections, ttl_seconds=3600)
+            # If all providers failed, don't cache empty results (fail-open pattern)
 
         # 2. Confidence filtering + non-food filtering (#85)
         filtered = [
@@ -148,8 +149,20 @@ class AnalyzeMealUseCase:
 
     def _resolve_health_profile(self, payload: NutritionAnalysisRequest, goal: str):
         """Compute a personalised HealthProfile from biometrics when available,
-        otherwise fall back to goal-based static profiles."""
+        otherwise fall back to goal-based static profiles.
+
+        Explicit daily_calories_target takes priority over TDEE calculation.
+        """
         from app.contexts.nutrition.domain.models import GOAL_PROFILES, HealthProfile
+        from copy import copy
+
+        # If explicit daily_calories_target is provided, use it with a base profile
+        if payload.daily_calories_target:
+            base = GOAL_PROFILES.get(goal) or HealthProfile()
+            # Create a copy to avoid mutating shared profile
+            profile = copy(base)
+            profile.daily_calories_target = float(payload.daily_calories_target)
+            return profile
 
         # If all required biometric fields are provided, compute real TDEE
         has_biometrics = (
@@ -167,16 +180,7 @@ class AnalyzeMealUseCase:
                 physical_activity_level=payload.physical_activity_level or "moderately_active",
                 goal=goal,
             )
-            # Allow manual override of daily_calories_target
-            if payload.daily_calories_target:
-                profile.daily_calories_target = float(payload.daily_calories_target)
             return profile
-
-        # If only daily_calories_target is provided without full biometrics
-        if payload.daily_calories_target:
-            base = GOAL_PROFILES.get(goal) or HealthProfile()
-            base.daily_calories_target = float(payload.daily_calories_target)
-            return base
 
         # Full static fallback
         return GOAL_PROFILES.get(goal) or HealthProfile()
