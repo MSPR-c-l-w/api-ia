@@ -138,3 +138,7 @@ class NutritionLookupService:
     def is_food_label(self, label: str) -> bool:
         """Implement NutritionLookupPort — delegates to the module-level function."""
         return is_food_label(label)
+
+    def get_catalog(self) -> dict[str, tuple[float, float, float, float, float]]:
+        """Return the static embedded catalog."""
+        return dict(_TABLE)

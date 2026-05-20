@@ -36,11 +36,11 @@ def test_nutrition_meal_plan_endpoint(client):
     assert response.status_code == 200
     data = response.get_json()
 
-    assert data["modelStatus"] == "stub_ready_for_llm"
+    assert data["modelStatus"] in ("composer_active", "stub_ready_for_llm")
     assert data["userGoal"] == "perte_de_poids"
     assert len(data["days"]) == 7
-    assert data["days"][0]["estimatedCalories"] == 1800
-    assert data["days"][0]["snack"] == "Yaourt nature"
+    assert 500 <= data["days"][0]["estimatedCalories"] <= 5000
+    assert data["days"][0]["snack"] is not None  # collation fournie (aliment réel du catalogue)
 
 
 def test_nutrition_legacy_analyze_endpoint_still_available(client):

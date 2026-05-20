@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 
-from app.contexts.nutrition.domain.ports import LlmProviderPort
+from app.contexts.nutrition.domain.ports import LlmProviderPort, NutritionLookupPort
 from app.contexts.nutrition.domain.tdee import TdeeCalculator
 from app.contexts.nutrition.presentation.schemas import (
     DailyMealPlan,
@@ -15,17 +15,22 @@ logger = logging.getLogger(__name__)
 
 
 class GenerateMealPlanUseCase:
-    """Generates a 7-day personalised meal plan via LLM with a local stub fallback."""
+    """Generates a 7-day personalised meal plan.
+
+    Priority: LLM (if configured) > MealComposer (from real food catalog) > static stub.
+    """
 
     def __init__(
         self,
         llm_provider: LlmProviderPort | None = None,
         tdee_calculator: TdeeCalculator | None = None,
+        nutrition_lookup: NutritionLookupPort | None = None,
     ) -> None:
         from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
 
         self._llm = llm_provider or LlmProvider(endpoint=None, api_key=None)
         self._tdee = tdee_calculator or TdeeCalculator()
+        self._nutrition_lookup = nutrition_lookup
 
     async def execute(self, payload: MealPlanRequest) -> MealPlanResponse:
         constraints = {item.lower() for item in payload.dietary_constraints}
@@ -45,7 +50,33 @@ class GenerateMealPlanUseCase:
                 modelStatus="llm_active",
             )
 
-        # Static fallback
+        # MealComposer fallback — uses the real Kaggle food catalog
+        composer_days = self._compose_plan(payload, constraints, allergies)
+        if composer_days:
+            scores = [d.get("score", 0) for d in composer_days]
+            avg_score = round(sum(scores) / len(scores), 3) if scores else 0
+            return MealPlanResponse(
+                userGoal=payload.user_goal,
+                days=[
+                    DailyMealPlan(
+                        day=d["day"],
+                        breakfast=d["breakfast"],
+                        lunch=d["lunch"],
+                        dinner=d["dinner"],
+                        snack=d.get("snack"),
+                        estimatedCalories=d["estimatedCalories"],
+                    )
+                    for d in composer_days
+                ],
+                notes=[
+                    f"Plan composé à partir du catalogue de {self._catalog_size()} aliments validés.",
+                    f"Score moyen d'équilibre nutritionnel : {avg_score:.3f}/1.0",
+                    "Les contraintes et allergies déclarées sont appliquées.",
+                ],
+                modelStatus="composer_active",
+            )
+
+        # Static stub fallback (last resort)
         return MealPlanResponse(
             userGoal=payload.user_goal,
             days=self._static_plan(constraints, allergies, daily_calories),
@@ -117,6 +148,67 @@ class GenerateMealPlanUseCase:
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
             logger.warning("Failed to parse LLM meal plan: %s", exc)
             return None
+
+    def _compose_plan(
+        self,
+        payload: MealPlanRequest,
+        constraints: set[str],
+        allergies: set[str],
+    ) -> list[dict] | None:
+        """Use MealComposerService to build a 7-day plan from the real food catalog."""
+        from app.contexts.nutrition.domain.meal_composer import MealComposerService
+        from app.contexts.nutrition.domain.models import GOAL_PROFILES, HealthProfile
+
+        lookup = self._nutrition_lookup
+        if lookup is None:
+            return None
+
+        try:
+            catalog = lookup.get_catalog()
+        except AttributeError:
+            return None
+
+        if not catalog:
+            return None
+
+        # Resolve health profile
+        has_biometrics = (
+            payload.weight_kg is not None
+            and payload.height_cm is not None
+            and payload.age_years is not None
+            and payload.gender is not None
+        )
+        if has_biometrics:
+            profile = self._tdee.compute(
+                weight_kg=payload.weight_kg,
+                height_cm=payload.height_cm,
+                age_years=payload.age_years,
+                gender=payload.gender,
+                physical_activity_level=payload.physical_activity_level or "moderately_active",
+                goal=payload.user_goal,
+            )
+        elif payload.daily_calories_target:
+            base = GOAL_PROFILES.get(payload.user_goal) or HealthProfile()
+            base.daily_calories_target = float(payload.daily_calories_target)
+            profile = base
+        else:
+            profile = GOAL_PROFILES.get(payload.user_goal) or HealthProfile()
+
+        try:
+            composer = MealComposerService(catalog)
+            return composer.compose_week(profile, constraints, allergies)
+        except Exception as exc:
+            logger.warning("MealComposer failed: %s", exc)
+            return None
+
+    def _catalog_size(self) -> int:
+        """Return number of items in the food catalog."""
+        if self._nutrition_lookup is None:
+            return 0
+        try:
+            return len(self._nutrition_lookup.get_catalog())
+        except AttributeError:
+            return 0
 
     @staticmethod
     def _static_plan(
