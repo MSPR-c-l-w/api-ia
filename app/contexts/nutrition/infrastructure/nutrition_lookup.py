@@ -109,10 +109,15 @@ class NutritionLookupService:
         *estimated* is ``True`` when the food is not found in the reference table.
         macros_per_100g = (calories, proteins_g, carbs_g, fats_g, fibers_g).
         """
-        normalised = food_name.lower().strip()
-        for key, macros in _TABLE.items():
-            if key in normalised or normalised in key:
-                return macros, False
+        normalised = re.sub(r"\s+", " ", food_name.lower().strip())
+
+        if normalised in _TABLE:
+            return _TABLE[normalised], False
+
+        for key in sorted(_TABLE, key=len, reverse=True):
+            if re.search(r"\b" + re.escape(key) + r"\b", normalised):
+                return _TABLE[key], False
+
         logger.debug("Food '%s' not in nutrition table — using defaults", food_name)
         return _DEFAULT, True
 
