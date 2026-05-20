@@ -60,7 +60,10 @@ class AiCacheService:
 
     def image_key(self, image_url: str | None, image_base64: str | None) -> str:
         """Stable key for a vision detection request."""
-        return self._hash_key("img", {"url": image_url, "b64_len": len(image_base64 or "")})
+        image_b64_hash = (
+            hashlib.sha256(image_base64.encode()).hexdigest() if image_base64 else None
+        )
+        return self._hash_key("img", {"url": image_url, "b64_hash": image_b64_hash})
 
     def llm_key(self, goal: str, imbalance_tokens: list[str]) -> str:
         """Stable key for an LLM suggestion request."""
