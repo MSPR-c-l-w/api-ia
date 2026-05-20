@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     nutrition_llm_api_key: str | None = None
     nutrition_llm_timeout_seconds: int = 30
     port: int = 8000
+    backend_url: str = "http://localhost:3001"
+    backend_timeout_seconds: int = 5
+    backend_service_email: str = "agathe.andre@example.com"
+    backend_service_password: str = "SeedPassword123!"
 
     @property
     def skip_mongodb_on_startup(self) -> bool:
