@@ -6,7 +6,7 @@ replacing the generic goal-based static profiles when biometric data is availabl
 
 from __future__ import annotations
 
-from app.contexts.nutrition.domain.models import HealthProfile
+from app.contexts.nutrition.domain.models import GOAL_PROFILES, HealthProfile
 
 # Activity multipliers (PAL — Physical Activity Level)
 _ACTIVITY_MULTIPLIERS: dict[str, float] = {
@@ -34,6 +34,37 @@ _PROTEIN_G_PER_KG: dict[str, float] = {
 
 class TdeeCalculator:
     """Compute personalised nutritional targets from biometrics."""
+
+    def resolve_health_profile(
+        self,
+        goal: str,
+        weight_kg: float | None = None,
+        height_cm: float | None = None,
+        age_years: int | None = None,
+        gender: str | None = None,
+        physical_activity_level: str = "moderately_active",
+        daily_calories_target: float | None = None,
+    ) -> HealthProfile:
+        """Return a HealthProfile using the priority chain:
+        1. Explicit daily_calories_target (overrides everything else).
+        2. Full biometrics → personalised TDEE.
+        3. Goal-based static default.
+        """
+        if daily_calories_target:
+            base = GOAL_PROFILES.get(goal) or HealthProfile()
+            return base.model_copy(update={"daily_calories_target": float(daily_calories_target)})
+
+        if all(v is not None for v in (weight_kg, height_cm, age_years, gender)):
+            return self.compute(
+                weight_kg=weight_kg,
+                height_cm=height_cm,
+                age_years=age_years,
+                gender=gender,
+                physical_activity_level=physical_activity_level,
+                goal=goal,
+            )
+
+        return GOAL_PROFILES.get(goal) or HealthProfile()
 
     def compute(
         self,

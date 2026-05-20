@@ -50,6 +50,7 @@ class BackendNutritionLookupService:
 
         # In-memory cache: {normalised_name: (calories, proteins, carbs, fats, fibers)}
         self._table: dict[str, tuple[float, float, float, float, float]] = {}
+        self._compiled_patterns: dict[str, re.Pattern[str]] = {}
         self._loaded_at: float = 0.0
 
     # ------------------------------------------------------------------
@@ -103,11 +104,11 @@ class BackendNutritionLookupService:
         if normalised in self._table:
             return self._table[normalised], False
 
-        # 2. Word-boundary match to avoid false positives (e.g. "chick" matching "chicken")
+        # 2. Word-boundary match using pre-compiled patterns
+        normalised_pattern = re.compile(r"\b" + re.escape(normalised) + r"\b")
         for key, macros in self._table.items():
-            key_pattern = r"\b" + re.escape(key) + r"\b"
-            val_pattern = r"\b" + re.escape(normalised) + r"\b"
-            if re.search(key_pattern, normalised) or re.search(val_pattern, key):
+            key_re = self._compiled_patterns.get(key)
+            if (key_re and key_re.search(normalised)) or normalised_pattern.search(key):
                 return macros, False
 
         # 3. Fallback: static embedded table
@@ -177,6 +178,10 @@ class BackendNutritionLookupService:
             )
 
         self._table = new_table
+        self._compiled_patterns = {
+            key: re.compile(r"\b" + re.escape(key) + r"\b")
+            for key in new_table
+        }
         self._loaded_at = time.time()
         logger.info(
             "BackendNutritionLookup: %d aliments chargés depuis le backend.", len(new_table)

@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import logging
+import time
+
 from asgiref.wsgi import WsgiToAsgi
-from flask import Flask
+from flask import Flask, g, request
 
 from app.config import settings
 from app.presentation.exception_handlers import register_error_handlers
 from app.presentation.openapi import register_openapi_routes
 from app.routers import register_blueprints
 from app.shared.infrastructure.database import close_mongodb, connect_mongodb
+
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> Flask:
@@ -18,6 +23,22 @@ def create_app() -> Flask:
     register_blueprints(application)
     register_error_handlers(application)
     register_openapi_routes(application)
+
+    @application.before_request
+    def _start_timer() -> None:
+        g.start_time = time.perf_counter()
+
+    @application.after_request
+    def _log_request(response):
+        duration_ms = round((time.perf_counter() - g.start_time) * 1000, 1)
+        logger.info(
+            "%s %s → %s (%.1f ms)",
+            request.method,
+            request.path,
+            response.status_code,
+            duration_ms,
+        )
+        return response
 
     return application
 

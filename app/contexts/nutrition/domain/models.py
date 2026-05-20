@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
+
+from pydantic import BaseModel, ConfigDict
 
 
 @dataclass
@@ -43,9 +45,13 @@ class NutrientDetail:
     deviation_pct: float  # positive = excess, negative = deficit
 
 
-@dataclass
-class HealthProfile:
-    """Daily nutritional targets for imbalance detection."""
+class HealthProfile(BaseModel):
+    """Daily nutritional targets for imbalance detection.
+
+    Immutable value object — use model_copy(update={...}) to derive variants.
+    """
+
+    model_config = ConfigDict(frozen=True)
 
     daily_calories_target: float = 2000.0
     proteins_target_g: float = 75.0

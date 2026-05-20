@@ -89,27 +89,17 @@ class GenerateMealPlanUseCase:
 
     def _resolve_calories(self, payload: MealPlanRequest) -> int:
         """Return daily caloric target: TDEE (if biometrics) > explicit target > goal default."""
-        if payload.daily_calories_target:
-            return payload.daily_calories_target
-
-        has_biometrics = (
-            payload.weight_kg is not None
-            and payload.height_cm is not None
-            and payload.age_years is not None
-            and payload.gender is not None
-        )
-        if has_biometrics:
-            profile = self._tdee.compute(
+        return int(
+            self._tdee.resolve_health_profile(
+                goal=payload.user_goal,
                 weight_kg=payload.weight_kg,
                 height_cm=payload.height_cm,
                 age_years=payload.age_years,
                 gender=payload.gender,
                 physical_activity_level=payload.physical_activity_level or "moderately_active",
-                goal=payload.user_goal,
-            )
-            return int(profile.daily_calories_target)
-
-        return 1900 if payload.user_goal == "perte_de_poids" else 2300
+                daily_calories_target=payload.daily_calories_target,
+            ).daily_calories_target
+        )
 
     async def _try_llm_plan(
         self, payload: MealPlanRequest, daily_calories: int
@@ -157,7 +147,6 @@ class GenerateMealPlanUseCase:
     ) -> list[dict] | None:
         """Use MealComposerService to build a 7-day plan from the real food catalog."""
         from app.contexts.nutrition.domain.meal_composer import MealComposerService
-        from app.contexts.nutrition.domain.models import GOAL_PROFILES, HealthProfile
 
         lookup = self._nutrition_lookup
         if lookup is None:
@@ -172,27 +161,15 @@ class GenerateMealPlanUseCase:
             return None
 
         # Resolve health profile
-        has_biometrics = (
-            payload.weight_kg is not None
-            and payload.height_cm is not None
-            and payload.age_years is not None
-            and payload.gender is not None
+        profile = self._tdee.resolve_health_profile(
+            goal=payload.user_goal,
+            weight_kg=payload.weight_kg,
+            height_cm=payload.height_cm,
+            age_years=payload.age_years,
+            gender=payload.gender,
+            physical_activity_level=payload.physical_activity_level or "moderately_active",
+            daily_calories_target=payload.daily_calories_target,
         )
-        if has_biometrics:
-            profile = self._tdee.compute(
-                weight_kg=payload.weight_kg,
-                height_cm=payload.height_cm,
-                age_years=payload.age_years,
-                gender=payload.gender,
-                physical_activity_level=payload.physical_activity_level or "moderately_active",
-                goal=payload.user_goal,
-            )
-        elif payload.daily_calories_target:
-            base = GOAL_PROFILES.get(payload.user_goal) or HealthProfile()
-            base.daily_calories_target = float(payload.daily_calories_target)
-            profile = base
-        else:
-            profile = GOAL_PROFILES.get(payload.user_goal) or HealthProfile()
 
         try:
             composer = MealComposerService(catalog)

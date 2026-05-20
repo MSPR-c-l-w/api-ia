@@ -159,39 +159,12 @@ class AnalyzeMealUseCase:
         )
 
     def _resolve_health_profile(self, payload: NutritionAnalysisRequest, goal: str):
-        """Compute a personalised HealthProfile from biometrics when available,
-        otherwise fall back to goal-based static profiles.
-
-        Explicit daily_calories_target takes priority over TDEE calculation.
-        """
-        from app.contexts.nutrition.domain.models import GOAL_PROFILES, HealthProfile
-        from copy import copy
-
-        # If explicit daily_calories_target is provided, use it with a base profile
-        if payload.daily_calories_target:
-            base = GOAL_PROFILES.get(goal) or HealthProfile()
-            # Create a copy to avoid mutating shared profile
-            profile = copy(base)
-            profile.daily_calories_target = float(payload.daily_calories_target)
-            return profile
-
-        # If all required biometric fields are provided, compute real TDEE
-        has_biometrics = (
-            payload.weight_kg is not None
-            and payload.height_cm is not None
-            and payload.age_years is not None
-            and payload.gender is not None
+        return self._tdee_calculator.resolve_health_profile(
+            goal=goal,
+            weight_kg=payload.weight_kg,
+            height_cm=payload.height_cm,
+            age_years=payload.age_years,
+            gender=payload.gender,
+            physical_activity_level=payload.physical_activity_level or "moderately_active",
+            daily_calories_target=payload.daily_calories_target,
         )
-        if has_biometrics:
-            profile = self._tdee_calculator.compute(
-                weight_kg=payload.weight_kg,
-                height_cm=payload.height_cm,
-                age_years=payload.age_years,
-                gender=payload.gender,
-                physical_activity_level=payload.physical_activity_level or "moderately_active",
-                goal=goal,
-            )
-            return profile
-
-        # Full static fallback
-        return GOAL_PROFILES.get(goal) or HealthProfile()
