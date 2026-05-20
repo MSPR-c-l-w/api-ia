@@ -94,11 +94,23 @@ def _ranked_exercises(
         )
         for exercise in EXERCISE_CATALOG
     ]
-    return sorted(
+    ranked = sorted(
         [(ex, sc) for ex, sc in scored if sc > 0],
         key=lambda item: item[1],
         reverse=True,
     )
+    # Fallback: if all exercises were done recently, include them with rotation penalty
+    if not ranked:
+        scored_fallback = [
+            (ex, _score_with_rotation(ex, profile, recent_exercise_ids, exclude_recent=False))
+            for ex in EXERCISE_CATALOG
+        ]
+        ranked = sorted(
+            [(ex, sc) for ex, sc in scored_fallback if sc > 0],
+            key=lambda item: item[1],
+            reverse=True,
+        )
+    return ranked
 
 
 def _assign_groups_to_training_days(
