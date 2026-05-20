@@ -1,6 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
-
-from app.config import settings
+from unittest.mock import AsyncMock, MagicMock, patch
 
 API_KEY = "test-api-key"
 HEADERS = {"X-API-Key": API_KEY}
@@ -45,13 +43,12 @@ def test_feedback_submitted_in_test_mode(client):
 
 
 def test_feedback_program_not_found_with_mongodb(client):
+    from app.composition.container import get_container
+
+    container = get_container()
+    use_case = container.submit_workout_feedback
+
     with (
-        patch.object(
-            type(settings),
-            "skip_mongodb_on_startup",
-            new_callable=PropertyMock,
-            return_value=False,
-        ),
         patch(
             "app.shared.infrastructure.database.ping_mongodb",
             new_callable=AsyncMock,
@@ -67,11 +64,15 @@ def test_feedback_program_not_found_with_mongodb(client):
         mock_db.__getitem__ = MagicMock(return_value=mock_collection)
         mock_get_db.return_value = mock_db
 
-        response = client.post(
-            "/recommendations/workout/507f1f77bcf86cd799439011/feedback",
-            headers=HEADERS,
-            json={"rating": 3},
-        )
+        use_case._test_mode = False
+        try:
+            response = client.post(
+                "/recommendations/workout/507f1f77bcf86cd799439011/feedback",
+                headers=HEADERS,
+                json={"rating": 3},
+            )
+        finally:
+            use_case._test_mode = True
 
     assert response.status_code == 404
     assert response.get_json()["detail"] == "PROGRAM_NOT_FOUND"

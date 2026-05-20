@@ -1,4 +1,7 @@
 from functools import lru_cache
+import logging
+
+import httpx
 
 from app.config import settings
 from app.contexts.nutrition.application.use_cases.analyze_meal import AnalyzeMealUseCase
@@ -46,6 +49,7 @@ class Container:
             self._workout_programs,
             self._workout_feedbacks,
             self._fitness_profiles,
+            test_mode=settings.skip_mongodb_on_startup,
         )
 
         hf_provider = HuggingFaceVisionProvider(
@@ -65,6 +69,7 @@ class Container:
         )
         nutrition_lookup = NutritionLookupService()
         # Remplace par le lookup backend avec fallback sur la table statique
+        _logger = logging.getLogger(__name__)
         try:
             _backend_auth = BackendAuthService(
                 backend_url=settings.backend_url,
@@ -78,14 +83,12 @@ class Container:
                 access_token=_token,
                 timeout_seconds=settings.backend_timeout_seconds,
             )
-            import logging
-            logging.getLogger(__name__).info(
+            _logger.info(
                 "Container: BackendNutritionLookupService actif (backend: %s)",
                 settings.backend_url,
             )
-        except Exception as exc:
-            import logging
-            logging.getLogger(__name__).warning(
+        except (httpx.HTTPError, RuntimeError, OSError) as exc:
+            _logger.warning(
                 "Container: impossible de connecter le lookup nutrition au backend (%s)."
                 " Fallback sur table statique.",
                 exc,

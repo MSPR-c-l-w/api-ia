@@ -1,6 +1,5 @@
 from datetime import UTC, datetime, timedelta
 
-from app.config import settings
 from app.contexts.workout.domain.entities.workout_program import (
     UserFitnessProfile,
     WorkoutFeedback,
@@ -93,17 +92,19 @@ class SubmitWorkoutFeedbackUseCase:
         program_repository: WorkoutProgramRepository,
         feedback_repository: WorkoutFeedbackRepository,
         profile_repository: FitnessProfileRepository,
+        test_mode: bool = False,
     ) -> None:
         self._programs = program_repository
         self._feedbacks = feedback_repository
         self._profiles = profile_repository
+        self._test_mode = test_mode
 
     async def execute(
         self,
         program_id: str,
         payload: WorkoutFeedbackRequest,
     ) -> WorkoutFeedbackResponse:
-        if settings.skip_mongodb_on_startup:
+        if self._test_mode:
             profile_niveau = "debutant"
             if payload.trop_facile:
                 profile_niveau = _bump_niveau(profile_niveau)

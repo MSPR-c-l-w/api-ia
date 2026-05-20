@@ -10,7 +10,7 @@ class EmptyProvider:
         return []
 
 
-class FoodProvider:
+class GoogleVisionProvider:
     async def detect_foods(self, image_url: str | None, image_base64: str | None):
         return [VisionDetection(label="salade", confidence=0.91)]
 
@@ -21,7 +21,7 @@ class LowConfidenceProvider:
 
 
 def test_analyze_meal_uses_google_fallback_when_primary_empty():
-    use_case = AnalyzeMealUseCase(vision_providers=[EmptyProvider(), FoodProvider()])
+    use_case = AnalyzeMealUseCase(vision_providers=[EmptyProvider(), GoogleVisionProvider()])
     payload = NutritionAnalysisRequest(imageUrl="https://example.com/meal.jpg", userGoal="equilibre")
 
     result = asyncio.run(use_case.execute(payload))
@@ -53,7 +53,7 @@ def test_analyze_meal_filters_low_confidence_detections():
 
 
 def test_analyze_meal_returns_imbalance_status_and_nutrient_details():
-    use_case = AnalyzeMealUseCase(vision_providers=[FoodProvider()])
+    use_case = AnalyzeMealUseCase(vision_providers=[GoogleVisionProvider()])
     payload = NutritionAnalysisRequest(imageUrl="https://example.com/meal.jpg", userGoal="perte_de_poids")
 
     result = asyncio.run(use_case.execute(payload))

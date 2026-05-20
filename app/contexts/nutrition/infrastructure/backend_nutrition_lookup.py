@@ -9,6 +9,7 @@ Stratégie :
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Any
 
@@ -97,12 +98,18 @@ class BackendNutritionLookupService:
     ) -> tuple[tuple[float, float, float, float, float], bool]:
         normalised = food_name.lower().strip()
 
-        # 1. Try backend table (loaded from API)
+        # 1. Exact match (fastest path)
+        if normalised in self._table:
+            return self._table[normalised], False
+
+        # 2. Word-boundary match to avoid false positives (e.g. "chick" matching "chicken")
         for key, macros in self._table.items():
-            if key in normalised or normalised in key:
+            key_pattern = r"\b" + re.escape(key) + r"\b"
+            val_pattern = r"\b" + re.escape(normalised) + r"\b"
+            if re.search(key_pattern, normalised) or re.search(val_pattern, key):
                 return macros, False
 
-        # 2. Fallback: static embedded table
+        # 3. Fallback: static embedded table
         static_result = self._fallback.lookup(food_name)
         if not static_result[1]:  # found in static table
             return static_result

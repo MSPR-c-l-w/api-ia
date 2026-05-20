@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import json
 import logging
-from urllib import request
-from urllib.error import URLError
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -159,16 +159,20 @@ class LlmProvider:
         return None
 
     async def _post_json(self, payload: dict) -> str | None:
-        body = json.dumps(payload).encode("utf-8")
         headers: dict[str, str] = {"Content-Type": "application/json"}
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
 
-        req = request.Request(self._endpoint, data=body, headers=headers, method="POST")
         try:
-            with request.urlopen(req, timeout=self._timeout) as resp:
-                return resp.read().decode("utf-8")
-        except (URLError, TimeoutError, OSError) as exc:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                resp = await client.post(
+                    self._endpoint,
+                    content=json.dumps(payload),
+                    headers=headers,
+                )
+                resp.raise_for_status()
+                return resp.text
+        except httpx.HTTPError as exc:
             logger.warning("LLM endpoint unavailable (%s)", exc)
             return None
 
