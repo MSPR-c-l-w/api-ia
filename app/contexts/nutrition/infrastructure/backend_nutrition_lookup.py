@@ -81,8 +81,7 @@ class BackendNutritionLookupService:
         )
 
     def is_food_label(self, label: str) -> bool:
-        lower = label.lower()
-        return not any(token in lower for token in _NON_FOOD_TOKENS)
+        return self._fallback.is_food_label(label)
 
     def get_catalog(self) -> dict[str, tuple[float, float, float, float, float]]:
         """Return the full backend catalog (loads from backend if needed)."""
