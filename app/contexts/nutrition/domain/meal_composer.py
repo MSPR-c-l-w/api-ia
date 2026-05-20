@@ -402,7 +402,7 @@ class MealComposerService:
                 # Rotation déterministe par day_offset
                 start = day_offset % len(candidates)
                 rotated = candidates[start:] + candidates[:start]
-                pool.extend(rotated[:max(8, len(rotated))])
+                pool.extend(rotated[:min(8, len(rotated))])
             if len(pool) >= n_foods * 4:
                 break
 
