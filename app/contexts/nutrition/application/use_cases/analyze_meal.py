@@ -106,7 +106,7 @@ class AnalyzeMealUseCase:
 
         # 3. Macro computation (#86)
         food_labels = [f.label for f in detected_foods]
-        macros = self._nutrition_lookup.compute_macros(food_labels)
+        macros = await self._nutrition_lookup.compute_macros(food_labels)
 
         # 4. Build personalised health profile from biometrics (#88)
         health_profile = self._resolve_health_profile(payload, goal)

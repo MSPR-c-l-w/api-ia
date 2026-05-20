@@ -51,7 +51,7 @@ class GenerateMealPlanUseCase:
             )
 
         # MealComposer fallback — uses the real Kaggle food catalog
-        composer_days = self._compose_plan(payload, constraints, allergies)
+        composer_days = await self._compose_plan(payload, constraints, allergies)
         if composer_days:
             scores = [d.get("score", 0) for d in composer_days]
             avg_score = round(sum(scores) / len(scores), 3) if scores else 0
@@ -69,7 +69,7 @@ class GenerateMealPlanUseCase:
                     for d in composer_days
                 ],
                 notes=[
-                    f"Plan composé à partir du catalogue de {self._catalog_size()} aliments validés.",
+                    f"Plan composé à partir du catalogue de {await self._catalog_size()} aliments validés.",
                     f"Score moyen d'équilibre nutritionnel : {avg_score:.3f}/1.0",
                     "Les contraintes et allergies déclarées sont appliquées.",
                 ],
@@ -149,7 +149,7 @@ class GenerateMealPlanUseCase:
             logger.warning("Failed to parse LLM meal plan: %s", exc)
             return None
 
-    def _compose_plan(
+    async def _compose_plan(
         self,
         payload: MealPlanRequest,
         constraints: set[str],
@@ -164,7 +164,7 @@ class GenerateMealPlanUseCase:
             return None
 
         try:
-            catalog = lookup.get_catalog()
+            catalog = await lookup.get_catalog()
         except AttributeError:
             return None
 
@@ -201,12 +201,12 @@ class GenerateMealPlanUseCase:
             logger.warning("MealComposer failed: %s", exc)
             return None
 
-    def _catalog_size(self) -> int:
+    async def _catalog_size(self) -> int:
         """Return number of items in the food catalog."""
         if self._nutrition_lookup is None:
             return 0
         try:
-            return len(self._nutrition_lookup.get_catalog())
+            return len(await self._nutrition_lookup.get_catalog())
         except AttributeError:
             return 0
 

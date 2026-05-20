@@ -139,6 +139,8 @@ def test_imbalance_empty_raises():
 
 def test_backend_lookup_metrics_with_real_data():
     """Test d'intégration : charge quelques aliments du backend et calcule les métriques."""
+    import asyncio
+
     from app.contexts.nutrition.infrastructure.backend_auth import BackendAuthService
     from app.contexts.nutrition.infrastructure.backend_nutrition_lookup import (
         BackendNutritionLookupService,
@@ -153,7 +155,7 @@ def test_backend_lookup_metrics_with_real_data():
         )
         token = auth.get_token()
         svc = BackendNutritionLookupService("http://localhost:3001", token)
-        svc._ensure_loaded()
+        asyncio.run(svc._ensure_loaded())
 
         if len(svc._table) == 0:
             pytest.skip("Backend non disponible ou table vide")
@@ -169,7 +171,7 @@ def test_backend_lookup_metrics_with_real_data():
                 fats_g=fat * 1.5,
                 fibers_g=fiber * 1.5,
             )
-            pred_macros = svc.compute_macros([name])
+            pred_macros = asyncio.run(svc.compute_macros([name]))
             samples.append((pred_macros, true_macros))
 
         result = compute_lookup_metrics(samples)

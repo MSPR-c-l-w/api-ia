@@ -121,7 +121,7 @@ class NutritionLookupService:
         logger.debug("Food '%s' not in nutrition table — using defaults", food_name)
         return _DEFAULT, True
 
-    def compute_macros(
+    async def compute_macros(
         self,
         foods: list[str],
         serving_g: float = DEFAULT_SERVING_G,
@@ -154,6 +154,6 @@ class NutritionLookupService:
         """Implement NutritionLookupPort — delegates to the module-level function."""
         return is_food_label(label)
 
-    def get_catalog(self) -> dict[str, tuple[float, float, float, float, float]]:
+    async def get_catalog(self) -> dict[str, tuple[float, float, float, float, float]]:
         """Return the static embedded catalog."""
         return dict(_TABLE)

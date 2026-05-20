@@ -162,6 +162,8 @@ def test_empty_catalog_gracefully():
 
 def test_compose_week_real_catalog():
     """Test d'intégration avec les 601 aliments du backend."""
+    import asyncio
+
     from app.contexts.nutrition.infrastructure.backend_auth import BackendAuthService
     from app.contexts.nutrition.infrastructure.backend_nutrition_lookup import (
         BackendNutritionLookupService,
@@ -175,7 +177,7 @@ def test_compose_week_real_catalog():
             timeout_seconds=5,
         )
         svc = BackendNutritionLookupService("http://localhost:3001", auth.get_token())
-        catalog = svc.get_catalog()
+        catalog = asyncio.run(svc.get_catalog())
 
         if len(catalog) < 10:
             pytest.skip("Catalogue trop petit (backend indisponible ?)")

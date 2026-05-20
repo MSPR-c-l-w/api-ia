@@ -26,6 +26,7 @@ from app.contexts.nutrition.infrastructure.nutrition_lookup import (
 logger = logging.getLogger(__name__)
 
 _CACHE_TTL_SECONDS = 600  # 10 minutes
+_BACKOFF_TTL_SECONDS = 30  # retry after 30 s on failure
 
 
 class BackendNutritionLookupService:
@@ -55,12 +56,12 @@ class BackendNutritionLookupService:
     # NutritionLookupPort interface
     # ------------------------------------------------------------------
 
-    def compute_macros(
+    async def compute_macros(
         self,
         food_labels: list[str],
         serving_g: float = DEFAULT_SERVING_G,
     ) -> Macros:
-        self._ensure_loaded()
+        await self._ensure_loaded()
         totals = [0.0, 0.0, 0.0, 0.0, 0.0]
         any_estimated = False
 
@@ -84,9 +85,9 @@ class BackendNutritionLookupService:
     def is_food_label(self, label: str) -> bool:
         return self._fallback.is_food_label(label)
 
-    def get_catalog(self) -> dict[str, tuple[float, float, float, float, float]]:
+    async def get_catalog(self) -> dict[str, tuple[float, float, float, float, float]]:
         """Return the full backend catalog (loads from backend if needed)."""
-        self._ensure_loaded()
+        await self._ensure_loaded()
         return dict(self._table)
 
     # ------------------------------------------------------------------
@@ -117,53 +118,50 @@ class BackendNutritionLookupService:
         logger.debug("Food '%s' not found anywhere — using defaults", food_name)
         return _DEFAULT, True
 
-    def _ensure_loaded(self) -> None:
+    async def _ensure_loaded(self) -> None:
         """Reload catalog from backend if cache is stale."""
         if time.time() - self._loaded_at < _CACHE_TTL_SECONDS:
             return
         try:
-            self._load_from_backend()
+            await self._load_from_backend()
         except Exception as exc:
             logger.warning(
                 "BackendNutritionLookup: impossible de charger depuis le backend (%s)."
                 " Fallback sur table statique.",
                 exc,
             )
+            # Throttle retries — don't hammer the backend on every request
+            self._loaded_at = time.time() - _CACHE_TTL_SECONDS + _BACKOFF_TTL_SECONDS
 
-    def _load_from_backend(self) -> None:
+    async def _load_from_backend(self) -> None:
         """Fetch all validated nutrition items from backend and populate _table."""
         url = f"{self._backend_url}/nutrition"
         headers = {"Authorization": f"Bearer {self._access_token}"}
 
-        # First request to get total count
-        resp = httpx.get(
-            url,
-            params={"page": 1, "limit": 1},
-            headers=headers,
-            timeout=self._timeout,
-        )
-        resp.raise_for_status()
-        total: int = resp.json().get("total", 0)
-
-        if total == 0:
-            logger.warning("BackendNutritionLookup: aucun item en base, fallback statique.")
-            return
-
-        # Fetch all items page by page (backend max limit = 100)
-        items: list[dict[str, Any]] = []
-        page_size = 100
-        for page in range(1, (total // page_size) + 2):
-            resp = httpx.get(
-                url,
-                params={"page": page, "limit": page_size},
-                headers=headers,
-                timeout=self._timeout,
-            )
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            # First request to get total count
+            resp = await client.get(url, params={"page": 1, "limit": 1}, headers=headers)
             resp.raise_for_status()
-            batch: list[dict[str, Any]] = resp.json().get("data", [])
-            items.extend(batch)
-            if len(batch) < page_size:
-                break
+            total: int = resp.json().get("total", 0)
+
+            if total == 0:
+                logger.warning("BackendNutritionLookup: aucun item en base, fallback statique.")
+                return
+
+            # Fetch all items page by page (backend max limit = 100)
+            items: list[dict[str, Any]] = []
+            page_size = 100
+            for page in range(1, (total // page_size) + 2):
+                resp = await client.get(
+                    url,
+                    params={"page": page, "limit": page_size},
+                    headers=headers,
+                )
+                resp.raise_for_status()
+                batch: list[dict[str, Any]] = resp.json().get("data", [])
+                items.extend(batch)
+                if len(batch) < page_size:
+                    break
 
         new_table: dict[str, tuple[float, float, float, float, float]] = {}
         for item in items:

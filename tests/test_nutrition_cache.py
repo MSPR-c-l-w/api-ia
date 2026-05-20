@@ -1,5 +1,6 @@
 """Unit tests for AI cache service (#91) and nutrition lookup (#86)."""
 
+import asyncio
 import time
 
 from app.contexts.nutrition.infrastructure.cache import AiCacheService
@@ -93,7 +94,7 @@ def test_lookup_unknown_food_is_estimated():
 
 def test_compute_macros_single_known_food():
     svc = NutritionLookupService()
-    macros = svc.compute_macros(["riz"], serving_g=100)
+    macros = asyncio.run(svc.compute_macros(["riz"], serving_g=100))
     # riz per 100g: 130 kcal, 2.7 prot, 28 carbs, 0.3 fat, 0.4 fiber
     assert macros.calories == 130
     assert macros.proteins_g == 2.7
@@ -102,20 +103,20 @@ def test_compute_macros_single_known_food():
 
 def test_compute_macros_empty_list():
     svc = NutritionLookupService()
-    macros = svc.compute_macros([])
+    macros = asyncio.run(svc.compute_macros([]))
     assert macros.calories == 0
     assert macros.proteins_g == 0.0
 
 
 def test_compute_macros_unknown_food_flagged():
     svc = NutritionLookupService()
-    macros = svc.compute_macros(["mystery_ingredient_xyz"])
+    macros = asyncio.run(svc.compute_macros(["mystery_ingredient_xyz"]))
     assert macros.estimated
 
 
 def test_compute_macros_mixed_list():
     svc = NutritionLookupService()
-    macros = svc.compute_macros(["poulet", "mystery_ingredient_xyz"])
+    macros = asyncio.run(svc.compute_macros(["poulet", "mystery_ingredient_xyz"]))
     assert macros.estimated  # at least one unknown → estimated
 
 
