@@ -64,14 +64,25 @@ class AnalyzeMealUseCase:
             detections = cached_detections
             provider_status = "cached"
         else:
-            for index, provider in enumerate(self._vision_providers):
+            for provider in self._vision_providers:
                 provider_result = await provider.detect_foods(
                     image_url=image_url,
                     image_base64=payload.image_base64,
                 )
                 if provider_result:
                     detections = provider_result
-                    provider_status = f"provider_{index}"
+                    provider_name = getattr(provider, "name", "")
+                    if not provider_name:
+                        class_name = provider.__class__.__name__
+                        provider_name_chars: list[str] = []
+                        for index, char in enumerate(class_name):
+                            if char.isupper() and index > 0:
+                                provider_name_chars.append("_")
+                            provider_name_chars.append(char.lower())
+                        provider_name = "".join(provider_name_chars)
+                        if provider_name.endswith("_provider"):
+                            provider_name = provider_name[: -len("_provider")]
+                    provider_status = provider_name
                     # Only cache successful results
                     self._cache.set(cache_key, detections, ttl_seconds=3600)
                     break
