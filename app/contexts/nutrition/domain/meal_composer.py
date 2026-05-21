@@ -46,10 +46,26 @@ class ComposedMeal:
 # Classifieur d'aliments
 # ---------------------------------------------------------------------------
 
+import re as _re
+
 _BREAKFAST_KEYWORDS = {
-    "avoine", "porridge", "skyr", "yaourt", "yogurt",
-    "granola", "muesli", "pancake", "crêpe", "toast",
-    "tartine", "smoothie", "bowl", "cereal", "müsli",
+    # Céréales / féculents matin
+    "avoine", "porridge", "granola", "muesli", "müsli", "cereal",
+    "flocon", "corn flakes", "weetabix",
+    # Produits laitiers / œufs
+    "yaourt", "yogurt", "skyr", "fromage blanc", "kéfir",
+    "œuf", "omelette", "egg",
+    # Viennoiseries / pains sucrés
+    "pancake", "crêpe", "toast", "tartine", "bagel", "brioche",
+    "muffin", "scone", "gaufre", "waffle",
+    # Fruits (consommés le matin)
+    "smoothie", "bowl", "fruit",
+    "banane", "pomme", "fraise", "framboise", "myrtille", "mangue",
+    "orange", "pamplemousse", "melon", "pastèque", "kiwi",
+    "ananas", "poire", "pêche", "nectarine", "abricot",
+    # Autres typiques matin
+    "confiture", "miel", "beurre de cacahuète", "beurre d'arachide",
+    "jus d'orange", "jus de fruit",
 }
 
 _VEGETABLE_KEYWORDS = {
@@ -59,12 +75,32 @@ _VEGETABLE_KEYWORDS = {
     "ail", "oignon", "céleri", "fenouil", "petits pois",
 }
 
+# Mots qui indiquent clairement un plat de déjeuner/dîner (pas petit-déj)
+_LUNCH_DINNER_KEYWORDS = {
+    "burger", "pizza", "pâte", "riz", "pasta", "sandwich",
+    "soupe", "ragoût", "curry", "sauté", "rôti", "grillé",
+    "fajita", "tacos", "burrito", "sushi", "ramen", "pho",
+}
+
+
+def _is_breakfast(name_l: str) -> bool:
+    """Retourne True si le nom contient un mot-clé petit-déj (correspondance mot entier)."""
+    for kw in _BREAKFAST_KEYWORDS:
+        # Correspondance mot entier pour éviter les faux positifs (ex: bœuf ≠ œuf)
+        pattern = r"(?<![a-zA-ZÀ-ÿœæ])" + _re.escape(kw) + r"(?![a-zA-ZÀ-ÿœæ])"
+        if _re.search(pattern, name_l):
+            return True
+    return False
+
 
 def _classify(name: str, macros: Macros) -> FoodCategory:
     name_l = name.lower()
 
-    # Mot-clé petit-déj
-    if any(kw in name_l for kw in _BREAKFAST_KEYWORDS):
+    # Exclure explicitement les plats de déjeuner/dîner avant la détection breakfast
+    if any(kw in name_l for kw in _LUNCH_DINNER_KEYWORDS):
+        # Laisse passer aux règles suivantes
+        pass
+    elif _is_breakfast(name_l):
         return FoodCategory.BREAKFAST
 
     # Légume : peu calorique + fibres ou mot-clé
@@ -239,7 +275,7 @@ class MealComposerService:
             snack_target = self._meal_target(profile, "snack")
 
             breakfast = self._compose_slot(
-                allowed, ["breakfast", "mixed", "carb"], breakfast_target,
+                allowed, ["breakfast", "carb"], breakfast_target,
                 n_foods=2, exclude=[], day_offset=day,
             )
             lunch = self._compose_slot(
