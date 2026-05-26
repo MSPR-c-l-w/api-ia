@@ -8,6 +8,8 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.contexts.nutrition.presentation.schemas import (
+    MealPlanRequest,
+    MealPlanResponse,
     NutritionAnalysisRequest,
     NutritionAnalysisResponse,
 )
@@ -41,6 +43,8 @@ def build_openapi_schema() -> dict[str, Any]:
         HealthResponse,
         NutritionAnalysisRequest,
         NutritionAnalysisResponse,
+        MealPlanRequest,
+        MealPlanResponse,
         WorkoutProgramRequest,
         WorkoutProgramResponse,
         WorkoutFeedbackRequest,
@@ -88,14 +92,74 @@ def build_openapi_schema() -> dict[str, Any]:
                     },
                 },
             },
+            "/ai/nutrition/analyze": {
+                "post": {
+                    "tags": ["nutrition"],
+                    "summary": "Analyser un repas (vision + recommandations)",
+                    "description": (
+                        "Analyse nutritionnelle à partir d'une image (URL ou base64) et de l'objectif "
+                        "utilisateur. Orchestre la détection d'aliments (HuggingFace → Google Vision), "
+                        "le calcul des macros, la détection des déséquilibres et la génération de "
+                        "recommandations personnalisées. Les appels IA sont mis en cache (TTL 1 h "
+                        "pour la vision, 24 h pour le LLM) pour limiter les coûts et le rate limiting."
+                    ),
+                    "requestBody": {
+                        "required": True,
+                        "content": json_content("NutritionAnalysisRequest"),
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Analyse réussie — aliments, macros, déséquilibres et conseils",
+                            "content": json_content("NutritionAnalysisResponse"),
+                        },
+                        "400": {"description": "Paramètres manquants ou invalides"},
+                        "413": {"description": "Image trop volumineuse (max 10 MB)"},
+                        "422": {"description": "Corps de requête invalide (validation Pydantic)"},
+                        "503": {
+                            "description": (
+                                "Tous les providers vision sont indisponibles. "
+                                "Le service répond en mode stub si les providers IA sont absents."
+                            ),
+                        },
+                    },
+                },
+            },
+            "/ai/nutrition/meal-plan": {
+                "post": {
+                    "tags": ["nutrition"],
+                    "summary": "Générer un plan repas 7 jours personnalisé",
+                    "description": (
+                        "Génère un plan hebdomadaire via LLM (Ollama/HuggingFace) selon l'objectif, "
+                        "les contraintes alimentaires et les allergies. Bascule sur un plan statique "
+                        "si le LLM est indisponible (timeout 30 s). "
+                        "Rate limits HuggingFace : 30 000 requêtes/mois (plan gratuit)."
+                    ),
+                    "requestBody": {
+                        "required": True,
+                        "content": json_content("MealPlanRequest"),
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Plan repas 7 jours généré",
+                            "content": json_content("MealPlanResponse"),
+                        },
+                        "400": {"description": "Paramètres manquants ou invalides"},
+                        "422": {"description": "Corps de requête invalide (validation Pydantic)"},
+                        "503": {
+                            "description": (
+                                "LLM indisponible — le service bascule automatiquement "
+                                "sur le plan statique de substitution."
+                            ),
+                        },
+                    },
+                },
+            },
             "/api/nutrition/analyze": {
                 "post": {
                     "tags": ["nutrition"],
-                    "summary": "Analyser un repas (stub)",
-                    "description": (
-                        "Analyse nutritionnelle à partir d'une image ou d'un objectif utilisateur. "
-                        "Implémentation stub en attendant l'intégration Hugging Face."
-                    ),
+                    "summary": "Analyser un repas (legacy)",
+                    "description": "Alias de compatibilité vers `/ai/nutrition/analyze`.",
+                    "deprecated": True,
                     "requestBody": {
                         "required": True,
                         "content": json_content("NutritionAnalysisRequest"),

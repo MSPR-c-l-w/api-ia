@@ -4,7 +4,7 @@ from app.contexts.workout.domain.entities.workout_program import PlannedExercise
 from app.contexts.workout.domain.services.recommendation_engine import _level_index, score_exercise
 from app.contexts.workout.domain.value_objects.exercise_definition import ExerciseDefinition
 from app.contexts.workout.domain.value_objects.user_profile import UserProfileForScoring
-from app.contexts.workout.infrastructure.data.exercises_catalog import EXERCISE_CATALOG
+from app.contexts.workout.domain.data.exercises_catalog import EXERCISE_CATALOG
 
 WEEK_DAYS = [
     "lundi",
@@ -94,11 +94,23 @@ def _ranked_exercises(
         )
         for exercise in EXERCISE_CATALOG
     ]
-    return sorted(
+    ranked = sorted(
         [(ex, sc) for ex, sc in scored if sc > 0],
         key=lambda item: item[1],
         reverse=True,
     )
+    # Fallback: if all exercises were done recently, include them with rotation penalty
+    if not ranked:
+        scored_fallback = [
+            (ex, _score_with_rotation(ex, profile, recent_exercise_ids, exclude_recent=False))
+            for ex in EXERCISE_CATALOG
+        ]
+        ranked = sorted(
+            [(ex, sc) for ex, sc in scored_fallback if sc > 0],
+            key=lambda item: item[1],
+            reverse=True,
+        )
+    return ranked
 
 
 def _assign_groups_to_training_days(

@@ -55,13 +55,97 @@
         }
       }
     },
+    "/ai/nutrition/analyze": {
+      "post": {
+        "tags": [
+          "nutrition"
+        ],
+        "summary": "Analyser un repas (vision + recommandations)",
+        "description": "Analyse nutritionnelle à partir d'une image (URL ou base64) et de l'objectif utilisateur. Orchestre la détection d'aliments (HuggingFace → Google Vision), le calcul des macros, la détection des déséquilibres et la génération de recommandations personnalisées. Les appels IA sont mis en cache (TTL 1 h pour la vision, 24 h pour le LLM) pour limiter les coûts et le rate limiting.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NutritionAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Analyse réussie — aliments, macros, déséquilibres et conseils",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NutritionAnalysisResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Paramètres manquants ou invalides"
+          },
+          "413": {
+            "description": "Image trop volumineuse (max 10 MB)"
+          },
+          "422": {
+            "description": "Corps de requête invalide (validation Pydantic)"
+          },
+          "503": {
+            "description": "Tous les providers vision sont indisponibles. Le service répond en mode stub si les providers IA sont absents."
+          }
+        }
+      }
+    },
+    "/ai/nutrition/meal-plan": {
+      "post": {
+        "tags": [
+          "nutrition"
+        ],
+        "summary": "Générer un plan repas 7 jours personnalisé",
+        "description": "Génère un plan hebdomadaire via LLM (Ollama/HuggingFace) selon l'objectif, les contraintes alimentaires et les allergies. Bascule sur un plan statique si le LLM est indisponible (timeout 30 s). Rate limits HuggingFace : 30 000 requêtes/mois (plan gratuit).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealPlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Plan repas 7 jours généré",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPlanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Paramètres manquants ou invalides"
+          },
+          "422": {
+            "description": "Corps de requête invalide (validation Pydantic)"
+          },
+          "503": {
+            "description": "LLM indisponible — le service bascule automatiquement sur le plan statique de substitution."
+          }
+        }
+      }
+    },
     "/api/nutrition/analyze": {
       "post": {
         "tags": [
           "nutrition"
         ],
-        "summary": "Analyser un repas (stub)",
-        "description": "Analyse nutritionnelle à partir d'une image ou d'un objectif utilisateur. Implémentation stub en attendant l'intégration Hugging Face.",
+        "summary": "Analyser un repas (legacy)",
+        "description": "Alias de compatibilité vers `/ai/nutrition/analyze`.",
+        "deprecated": true,
         "requestBody": {
           "required": true,
           "content": {
@@ -229,8 +313,13 @@
       },
       "NutritionAnalysisRequest": {
         "example": {
+          "ageYears": 30,
+          "gender": "male",
+          "heightCm": 175.0,
           "imageUrl": "https://example.com/meal.jpg",
-          "userGoal": "perte_de_poids"
+          "physicalActivityLevel": "moderately_active",
+          "userGoal": "perte_de_poids",
+          "weightKg": 75.0
         },
         "properties": {
           "imageUrl": {
@@ -282,6 +371,103 @@
               "equilibre"
             ],
             "title": "Usergoal"
+          },
+          "weightKg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 500,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Poids de l'utilisateur en kg (HealthProfile.weight)",
+            "title": "Weightkg"
+          },
+          "heightCm": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 300,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Taille de l'utilisateur en cm (User.height)",
+            "title": "Heightcm"
+          },
+          "ageYears": {
+            "anyOf": [
+              {
+                "maximum": 120,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Âge de l'utilisateur en années (calculé depuis User.date_of_birth)",
+            "title": "Ageyears"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Sexe : 'male' | 'female' (User.gender)",
+            "examples": [
+              "male",
+              "female"
+            ],
+            "title": "Gender"
+          },
+          "physicalActivityLevel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Niveau d'activité physique (HealthProfile.physical_activity_level)",
+            "examples": [
+              "sedentary",
+              "lightly_active",
+              "moderately_active",
+              "very_active",
+              "extra_active"
+            ],
+            "title": "Physicalactivitylevel"
+          },
+          "dailyCaloriesTarget": {
+            "anyOf": [
+              {
+                "maximum": 6000,
+                "minimum": 800,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Objectif calorique quotidien (HealthProfile.daily_calories_target) — remplace le calcul TDEE si fourni",
+            "title": "Dailycaloriestarget"
           }
         },
         "title": "NutritionAnalysisRequest",
@@ -291,27 +477,29 @@
         "example": {
           "detectedFoods": [
             {
-              "confidence": 0.84,
-              "label": "poulet-riz"
+              "confidence": 0.91,
+              "label": "poulet"
             }
           ],
           "estimatedCalories": 520,
           "estimatedMacros": {
             "carbs_g": 54,
             "fats_g": 14,
+            "fibers_g": 3.0,
             "proteins_g": 32
           },
           "feedback": [
             "Repas équilibré pour un objectif de perte de poids."
           ],
-          "modelStatus": "stub_ready_for_huggingface"
+          "imbalanceStatus": "EQUILIBRE",
+          "modelStatus": "stub_ready_for_huggingface",
+          "nutrientDetails": []
         },
         "properties": {
           "detectedFoods": {
             "description": "Aliments détectés avec scores de confiance",
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/DetectedFood"
             },
             "title": "Detectedfoods",
             "type": "array"
@@ -325,10 +513,25 @@
             "type": "integer"
           },
           "estimatedMacros": {
-            "additionalProperties": true,
-            "description": "Macronutriments estimés (g)",
-            "title": "Estimatedmacros",
-            "type": "object"
+            "$ref": "#/components/schemas/EstimatedMacros",
+            "description": "Macronutriments estimés (g)"
+          },
+          "imbalanceStatus": {
+            "description": "Statut global du repas : EQUILIBRE | DESEQUILIBRE",
+            "examples": [
+              "EQUILIBRE",
+              "DESEQUILIBRE"
+            ],
+            "title": "Imbalancestatus",
+            "type": "string"
+          },
+          "nutrientDetails": {
+            "description": "Détail par nutriment avec statut et écart",
+            "items": {
+              "$ref": "#/components/schemas/NutrientDetailSchema"
+            },
+            "title": "Nutrientdetails",
+            "type": "array"
           },
           "feedback": {
             "description": "Conseils textuels générés pour l'utilisateur",
@@ -351,10 +554,370 @@
           "detectedFoods",
           "estimatedCalories",
           "estimatedMacros",
+          "imbalanceStatus",
           "feedback",
           "modelStatus"
         ],
         "title": "NutritionAnalysisResponse",
+        "type": "object"
+      },
+      "DetectedFood": {
+        "properties": {
+          "label": {
+            "description": "Nom de l'aliment détecté",
+            "title": "Label",
+            "type": "string"
+          },
+          "confidence": {
+            "description": "Score de confiance du modèle",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Confidence",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "confidence"
+        ],
+        "title": "DetectedFood",
+        "type": "object"
+      },
+      "EstimatedMacros": {
+        "properties": {
+          "proteins_g": {
+            "description": "Protéines estimées (g)",
+            "minimum": 0,
+            "title": "Proteins G",
+            "type": "number"
+          },
+          "carbs_g": {
+            "description": "Glucides estimés (g)",
+            "minimum": 0,
+            "title": "Carbs G",
+            "type": "number"
+          },
+          "fats_g": {
+            "description": "Lipides estimés (g)",
+            "minimum": 0,
+            "title": "Fats G",
+            "type": "number"
+          },
+          "fibers_g": {
+            "default": 0.0,
+            "description": "Fibres estimées (g)",
+            "minimum": 0,
+            "title": "Fibers G",
+            "type": "number"
+          }
+        },
+        "required": [
+          "proteins_g",
+          "carbs_g",
+          "fats_g"
+        ],
+        "title": "EstimatedMacros",
+        "type": "object"
+      },
+      "NutrientDetailSchema": {
+        "description": "Statut d'un nutriment par rapport à la cible quotidienne (pour 1 repas).",
+        "properties": {
+          "name": {
+            "description": "Nom du nutriment",
+            "title": "Name",
+            "type": "string"
+          },
+          "actual": {
+            "description": "Valeur mesurée pour ce repas",
+            "title": "Actual",
+            "type": "number"
+          },
+          "target": {
+            "description": "Cible pour ce repas (1/3 de la cible journalière)",
+            "title": "Target",
+            "type": "number"
+          },
+          "unit": {
+            "description": "Unité (kcal ou g)",
+            "title": "Unit",
+            "type": "string"
+          },
+          "status": {
+            "description": "OK | EXCES | DEFICIT",
+            "title": "Status",
+            "type": "string"
+          },
+          "deviation_pct": {
+            "description": "Écart par rapport à la cible en %",
+            "title": "Deviation Pct",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "actual",
+          "target",
+          "unit",
+          "status",
+          "deviation_pct"
+        ],
+        "title": "NutrientDetailSchema",
+        "type": "object"
+      },
+      "MealPlanRequest": {
+        "example": {
+          "ageYears": 28,
+          "allergies": [
+            "arachide"
+          ],
+          "dailyCaloriesTarget": 1900,
+          "dietaryConstraints": [
+            "vegetarien"
+          ],
+          "gender": "female",
+          "heightCm": 168.0,
+          "physicalActivityLevel": "lightly_active",
+          "userGoal": "perte_de_poids",
+          "weightKg": 70.0
+        },
+        "properties": {
+          "userGoal": {
+            "description": "Objectif nutritionnel de l'utilisateur",
+            "examples": [
+              "perte_de_poids",
+              "prise_de_masse",
+              "equilibre"
+            ],
+            "title": "Usergoal",
+            "type": "string"
+          },
+          "dietaryConstraints": {
+            "description": "Contraintes alimentaires déclarées",
+            "items": {
+              "type": "string"
+            },
+            "title": "Dietaryconstraints",
+            "type": "array"
+          },
+          "allergies": {
+            "description": "Allergies à exclure des propositions",
+            "items": {
+              "type": "string"
+            },
+            "title": "Allergies",
+            "type": "array"
+          },
+          "dailyCaloriesTarget": {
+            "anyOf": [
+              {
+                "maximum": 5000,
+                "minimum": 800,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Objectif calorique quotidien (HealthProfile.daily_calories_target) — remplace le calcul TDEE si fourni",
+            "title": "Dailycaloriestarget"
+          },
+          "weightKg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 500,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Poids en kg (HealthProfile.weight)",
+            "title": "Weightkg"
+          },
+          "heightCm": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 300,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Taille en cm (User.height)",
+            "title": "Heightcm"
+          },
+          "ageYears": {
+            "anyOf": [
+              {
+                "maximum": 120,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Âge en années (calculé depuis User.date_of_birth)",
+            "title": "Ageyears"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Sexe : 'male' | 'female' (User.gender)",
+            "title": "Gender"
+          },
+          "physicalActivityLevel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Niveau d'activité physique (HealthProfile.physical_activity_level)",
+            "examples": [
+              "sedentary",
+              "lightly_active",
+              "moderately_active",
+              "very_active",
+              "extra_active"
+            ],
+            "title": "Physicalactivitylevel"
+          }
+        },
+        "required": [
+          "userGoal"
+        ],
+        "title": "MealPlanRequest",
+        "type": "object"
+      },
+      "MealPlanResponse": {
+        "example": {
+          "days": [
+            {
+              "breakfast": "Skyr + fruits rouges + flocons d'avoine",
+              "day": 1,
+              "dinner": "Saumon, brocoli vapeur, patate douce",
+              "estimatedCalories": 1870,
+              "lunch": "Salade quinoa, pois chiches, légumes croquants",
+              "snack": "Une pomme"
+            }
+          ],
+          "modelStatus": "stub_ready_for_llm",
+          "notes": [
+            "Plan généré en mode stub local.",
+            "Exclut les allergènes déclarés."
+          ],
+          "userGoal": "perte_de_poids"
+        },
+        "properties": {
+          "userGoal": {
+            "description": "Objectif utilisateur utilisé",
+            "title": "Usergoal",
+            "type": "string"
+          },
+          "days": {
+            "description": "Plan repas sur 7 jours",
+            "items": {
+              "$ref": "#/components/schemas/DailyMealPlan"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "notes": {
+            "description": "Informations complémentaires",
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "modelStatus": {
+            "description": "État du moteur de génération",
+            "examples": [
+              "stub_ready_for_llm"
+            ],
+            "title": "Modelstatus",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userGoal",
+          "days",
+          "notes",
+          "modelStatus"
+        ],
+        "title": "MealPlanResponse",
+        "type": "object"
+      },
+      "DailyMealPlan": {
+        "properties": {
+          "day": {
+            "description": "Jour du plan (1 à 7)",
+            "maximum": 7,
+            "minimum": 1,
+            "title": "Day",
+            "type": "integer"
+          },
+          "breakfast": {
+            "description": "Petit-déjeuner",
+            "title": "Breakfast",
+            "type": "string"
+          },
+          "lunch": {
+            "description": "Déjeuner",
+            "title": "Lunch",
+            "type": "string"
+          },
+          "dinner": {
+            "description": "Dîner",
+            "title": "Dinner",
+            "type": "string"
+          },
+          "snack": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Collation optionnelle",
+            "title": "Snack"
+          },
+          "estimatedCalories": {
+            "description": "Calories estimées sur la journée",
+            "minimum": 0,
+            "title": "Estimatedcalories",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "breakfast",
+          "lunch",
+          "dinner",
+          "estimatedCalories"
+        ],
+        "title": "DailyMealPlan",
         "type": "object"
       },
       "WorkoutProgramRequest": {
