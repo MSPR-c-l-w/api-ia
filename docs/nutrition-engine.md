@@ -30,11 +30,11 @@ Photo de repas ──► Détection aliments ──► Calcul macros ──► A
 ```
 
 **Fonctionnalités principales :**
-- Détection des aliments via HuggingFace ou Google Vision
-- Estimation des macronutriments (protéines, glucides, lipides, fibres, calories)
+- Détection des aliments via Google Vision
+  - Estimation des macronutriments (protéines, glucides, lipides, fibres, calories)
 - Calcul des besoins caloriques **personnalisé** par biométrie (formule Mifflin-St Jeor)
 - Détection des déséquilibres nutritionnels (±15 % de tolérance)
-- Génération de conseils textuels (LLM Ollama/HuggingFace ou fallback FR statique)
+- Génération de conseils textuels (LLM Ollama ou fallback FR statique)
 - Plan repas hebdomadaire sur 7 jours
 - Cache in-memory TTL pour éviter les appels redondants
 
@@ -56,10 +56,9 @@ app/contexts/nutrition/
 │       └── generate_meal_plan.py # GenerateMealPlanUseCase — génération plan 7 jours
 ├── infrastructure/
 │   ├── vision/
-│   │   ├── huggingface_provider.py  # Modèle food-detection HuggingFace
-│   │   └── google_vision_provider.py # Google Vision fallback
+│   │   └── google_vision_provider.py # Google Vision
 │   ├── nutrition_lookup.py  # Table de référence nutritionnelle (40 aliments)
-│   ├── llm_provider.py      # LLM Ollama/HuggingFace + fallback statique FR
+│   ├── llm_provider.py      # LLM Ollama + fallback statique FR
 │   └── cache.py             # AiCacheService (TTL, SHA-256 keys)
 └── presentation/
     └── schemas.py           # DTOs Pydantic : Request/Response
@@ -147,7 +146,7 @@ Analyse une photo de repas et retourne macros, déséquilibres et conseils perso
   "feedback": [
     "Augmentez légèrement les portions ou ajoutez une collation nutritive."
   ],
-  "modelStatus": "stub_ready_for_huggingface"
+  "modelStatus": "vision_stub"
 }
 ```
 
@@ -224,7 +223,7 @@ Alias de compatibilité vers `/ai/nutrition/analyze`. Même contrat, même répo
 │     SHA-256(imageUrl | imageBase64_len) → TTL 1h            │
 │                                                             │
 │  2. Vision detection                                        │
-│     HuggingFace (primary) → Google Vision (fallback)        │
+│     Google Vision                                           │
 │     ┌─ Confidence filter : score ≥ 0.5                      │
 │     └─ Non-food filter   : labels génériques exclus         │
 │                                                             │
@@ -244,7 +243,7 @@ Alias de compatibilité vers `/ai/nutrition/analyze`. Même contrat, même répo
 │                                                             │
 │  6. Génération conseils LLM                                 │
 │     Cache check (LLM) → TTL 24h                             │
-│     LlmProvider (Ollama → HuggingFace → fallback statique)  │
+│     LlmProvider (Ollama → fallback statique)                │
 │                                                             │
 │  7. Réponse assemblée                                       │
 └─────────────────────────────────────────────────────────────┘
@@ -394,8 +393,7 @@ Cascade de providers pour la génération de conseils :
 
 ```
 1. Ollama (endpoint local configurable)
-2. HuggingFace Inference API
-3. Fallback statique FR (messages prédéfinis par objectif + type de déséquilibre)
+2. Fallback statique FR (messages prédéfinis par objectif + type de déséquilibre)
 ```
 
 Le fallback statique garantit qu'un conseil pertinent est toujours retourné même sans accès LLM.
@@ -511,11 +509,10 @@ python3 -m pytest tests/test_nutrition.py          # Endpoints HTTP (httpx)
 ```bash
 # LLM (optionnel — fallback statique si absent)
 NUTRITION_LLM_ENDPOINT=http://localhost:11434/api/generate   # Ollama
-NUTRITION_LLM_API_KEY=                                        # HuggingFace token
+NUTRITION_LLM_API_KEY=
 NUTRITION_LLM_TIMEOUT_SECONDS=10
 
 # Vision providers (optionnel — filtre confiance ≥ 0.5)
-HUGGINGFACE_API_KEY=hf_...
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/service_account.json
 ```
 
@@ -527,7 +524,7 @@ Sans ces variables, le service fonctionne entièrement en mode **fallback statiq
 
 | Ticket | Description | Statut |
 |--------|-------------|--------|
-| #83 | Provider HuggingFace (food-detection) | ✅ |
+| #83 | Provider HuggingFace (food-detection) — supprimé | ~~✅~~ |
 | #84 | Provider Google Vision (fallback) | ✅ |
 | #85 | Filtre de confiance (seuil 0.5) + labels non-alimentaires | ✅ |
 | #86 | `NutritionLookupService` — table de référence 40 aliments | ✅ |

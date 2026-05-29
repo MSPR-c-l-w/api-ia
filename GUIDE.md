@@ -34,7 +34,6 @@ cp .env.example .env
 | `MONGODB_URI` | URI MongoDB | `mongodb://localhost:27017/healthai_coach` |
 | `BACKEND_URL` | URL du backend NestJS | `http://localhost:3001` |
 | `BACKEND_TIMEOUT` | Timeout appels backend (s) | `10` |
-| `HUGGINGFACE_API_KEY` | Token HuggingFace (vision + LLM) | *(optionnel)* |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Chemin vers le fichier JSON Google Vision | *(optionnel)* |
 | `NUTRITION_LLM_ENDPOINT` | Endpoint Ollama ou autre LLM | *(optionnel)* |
 | `NUTRITION_LLM_API_KEY` | Clé API LLM | *(optionnel)* |
@@ -126,7 +125,7 @@ Analyse une photo de repas et retourne macros, déséquilibres nutritionnels et 
     { "name": "calories", "actual": 520, "target": 566.7, "unit": "kcal", "status": "OK", "deviation_pct": -8.2 }
   ],
   "feedback": ["Repas équilibré pour votre objectif."],
-  "modelStatus": "stub_ready_for_huggingface"
+  "modelStatus": "vision_stub"
 }
 ```
 

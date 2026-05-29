@@ -115,7 +115,7 @@ class NutritionAnalysisResponse(BaseModel):
                 "imbalanceStatus": "EQUILIBRE",
                 "nutrientDetails": [],
                 "feedback": ["Repas équilibré pour un objectif de perte de poids."],
-                "modelStatus": "stub_ready_for_huggingface",
+                "modelStatus": "vision_stub",
             },
         },
     )
@@ -149,7 +149,7 @@ class NutritionAnalysisResponse(BaseModel):
     model_status: str = Field(
         alias="modelStatus",
         description="État du modèle IA (stub ou modèle actif)",
-        examples=["stub_ready_for_huggingface"],
+        examples=["vision_stub"],
     )
 
 

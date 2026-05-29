@@ -418,7 +418,7 @@ carbs_g     RMSE=58g        R²=−10.1   dev_moy=−51%
 
 | Problème | Impact | Cause |
 |----------|--------|-------|
-| **Vision IA non configurée** | Détection photo = stub (`poulet-riz`) | Pas de clé HuggingFace/Google |
+| **Vision IA non configurée** | Détection photo = stub (`poulet-riz`) | Pas de clé Google Vision |
 | **LLM non configuré** | Suggestions textuelles = statiques | Pas de clé LLM/Ollama |
 | **Cache in-memory** | Rechargement à chaque restart | TTL 10 min, pas de Redis |
 | **Score prise_de_masse** | −29% de la cible calorique | Catalogue pauvre en items >400 kcal |
@@ -435,7 +435,7 @@ carbs_g     RMSE=58g        R²=−10.1   dev_moy=−51%
 
 **Moyen terme (avec ML) :**
 - Entraîner un modèle de régression sur les feedbacks workout pour ajuster les poids (actuellement hardcodés)
-- Intégrer HuggingFace pour la vision (`POST /ai/nutrition/analyze` avec photo réelle)
+- Intégrer un modèle de vision pour la détection réelle d'aliments (`POST /ai/nutrition/analyze` avec photo réelle)
 - Collaborative filtering : recommander des repas aimés par des users similaires
 
 **Long terme :**
