@@ -191,7 +191,7 @@ Génère un plan repas hebdomadaire (7 jours) adapté au profil utilisateur.
     "Plan généré en mode stub local.",
     "Exclut les allergènes déclarés."
   ],
-  "modelStatus": "stub_ready_for_llm"
+  "modelStatus": "composer_active"
 }
 ```
 

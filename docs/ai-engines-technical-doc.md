@@ -260,10 +260,12 @@ scale = clamp(scale, 0.5, 4.0)
 
 Macros scalées = macros_originales × scale
 Nom affiché    :
-  scale ≈ 1.0 (±15%) → "poulet grillé (150g)"        (inchangé)
-  scale = 2.0         → "poulet grillé (150g) ×2"
-  scale = 0.5         → "poulet grillé (150g) ×½"
-  scale = 1.5         → "poulet grillé (150g) ×1.5"
+  scale = 1   → "poulet grillé (150g)"      (inchangé, pas de suffixe)
+  scale = 2   → "poulet grillé (150g) ×2"
+  scale = 3   → "poulet grillé (150g) ×3"
+  scale = 0.5 → "poulet grillé (150g) ×½"
+
+Seules les valeurs entières ou ×½ sont utilisées — jamais de décimales (×1.4, ×3.8…).
 ```
 
 **Score d'un repas (0–1) :**
@@ -283,8 +285,10 @@ Avec les poids par nutriment :
 | fibers_g | 0.8 | Santé digestive |
 
 **Variation sur 7 jours :**
-- Rotation déterministe des candidats via `day_offset` (pas de hasard → reproductible)
-- Mémorisation des protéines/glucides utilisés pour éviter les répétitions
+- Fenêtre glissante d'exclusion : **tous** les aliments utilisés les 2 jours précédents sont exclus (petit-déjeuner, déjeuner, dîner, collation inclus)
+- Rotation déterministe des candidats via `day_offset` (reproductible)
+- Reset de la fenêtre d'exclusion tous les 3 jours pour autoriser les cycles naturels
+- Double fallback si le catalogue filtré est trop petit : d'abord catalogue complet, puis ignore les exclusions
 
 **Contraintes alimentaires appliquées :**
 - `vegetarien` → exclut viandes + poissons
