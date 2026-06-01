@@ -33,6 +33,12 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.source="https://github.com/MSPR-c-l-w/api-ia" \
       org.opencontainers.image.licenses="MIT"
 
+# ── Upgrade base packages first to patch any known CVEs ────────────────────
+RUN apt-get update && \
+    apt-get upgrade -y --no-install-recommends && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # ── Install MongoDB 7 (server only — lean install) ─────────────────────────
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gnupg curl ca-certificates && \
