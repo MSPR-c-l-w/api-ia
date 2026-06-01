@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.1.5 (2026-06-01)
+
+### Bug Fixes
+
+- **cd**: Build linux/amd64 only — MongoDB 7 has no arm64 Debian packages
+  ([`3e2ad01`](https://github.com/MSPR-c-l-w/api-ia/commit/3e2ad01061c247bc4e283ca18d1d38617d9b55fb))
+
+
 ## v0.1.4 (2026-06-01)
 
 ### Bug Fixes
