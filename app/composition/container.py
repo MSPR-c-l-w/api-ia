@@ -20,9 +20,6 @@ from app.contexts.nutrition.infrastructure.nutrition_lookup import NutritionLook
 from app.contexts.nutrition.infrastructure.vision.google_vision_provider import (
     GoogleVisionProvider,
 )
-from app.contexts.nutrition.infrastructure.vision.huggingface_provider import (
-    HuggingFaceVisionProvider,
-)
 from app.contexts.workout.application.use_cases.create_workout_program import (
     CreateWorkoutProgramUseCase,
 )
@@ -52,11 +49,6 @@ class Container:
             test_mode=settings.skip_mongodb_on_startup,
         )
 
-        hf_provider = HuggingFaceVisionProvider(
-            endpoint=settings.nutrition_huggingface_endpoint,
-            api_key=settings.nutrition_huggingface_api_key,
-            timeout_seconds=settings.nutrition_provider_timeout_seconds,
-        )
         google_provider = GoogleVisionProvider(
             endpoint=settings.nutrition_google_vision_endpoint,
             api_key=settings.nutrition_google_vision_api_key,
@@ -98,7 +90,7 @@ class Container:
         ai_cache = AiCacheService()
 
         self.analyze_meal = AnalyzeMealUseCase(
-            vision_providers=[hf_provider, google_provider],
+            vision_providers=[google_provider],
             nutrition_lookup=nutrition_lookup,
             imbalance_service=imbalance_service,
             llm_provider=llm_provider,

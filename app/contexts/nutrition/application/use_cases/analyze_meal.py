@@ -21,7 +21,7 @@ _CONFIDENCE_THRESHOLD = 0.5
 class AnalyzeMealUseCase:
     """
     Orchestrates a full meal analysis:
-      1. Vision detection (HuggingFace → Google Vision fallback) with caching (#91)
+      1. Vision detection (Google Vision) with caching (#91)
       2. Confidence-threshold + non-food filtering (#85)
       3. Macro computation via embedded nutrition table (#86)
       4. Nutritional imbalance detection with personalised TDEE targets when
@@ -102,7 +102,7 @@ class AnalyzeMealUseCase:
             model_status = f"{provider_status}_active"
         else:
             detected_foods = [DetectedFood(label="poulet-riz", confidence=0.84)]
-            model_status = "stub_ready_for_huggingface"
+            model_status = "vision_stub"
 
         # 3. Macro computation (#86)
         food_labels = [f.label for f in detected_foods]

@@ -260,10 +260,12 @@ scale = clamp(scale, 0.5, 4.0)
 
 Macros scalées = macros_originales × scale
 Nom affiché    :
-  scale ≈ 1.0 (±15%) → "poulet grillé (150g)"        (inchangé)
-  scale = 2.0         → "poulet grillé (150g) ×2"
-  scale = 0.5         → "poulet grillé (150g) ×½"
-  scale = 1.5         → "poulet grillé (150g) ×1.5"
+  scale = 1   → "poulet grillé (150g)"      (inchangé, pas de suffixe)
+  scale = 2   → "poulet grillé (150g) ×2"
+  scale = 3   → "poulet grillé (150g) ×3"
+  scale = 0.5 → "poulet grillé (150g) ×½"
+
+Seules les valeurs entières ou ×½ sont utilisées — jamais de décimales (×1.4, ×3.8…).
 ```
 
 **Score d'un repas (0–1) :**
@@ -283,8 +285,10 @@ Avec les poids par nutriment :
 | fibers_g | 0.8 | Santé digestive |
 
 **Variation sur 7 jours :**
-- Rotation déterministe des candidats via `day_offset` (pas de hasard → reproductible)
-- Mémorisation des protéines/glucides utilisés pour éviter les répétitions
+- Fenêtre glissante d'exclusion : **tous** les aliments utilisés les 2 jours précédents sont exclus (petit-déjeuner, déjeuner, dîner, collation inclus)
+- Rotation déterministe des candidats via `day_offset` (reproductible)
+- Reset de la fenêtre d'exclusion tous les 3 jours pour autoriser les cycles naturels
+- Double fallback si le catalogue filtré est trop petit : d'abord catalogue complet, puis ignore les exclusions
 
 **Contraintes alimentaires appliquées :**
 - `vegetarien` → exclut viandes + poissons
@@ -418,7 +422,7 @@ carbs_g     RMSE=58g        R²=−10.1   dev_moy=−51%
 
 | Problème | Impact | Cause |
 |----------|--------|-------|
-| **Vision IA non configurée** | Détection photo = stub (`poulet-riz`) | Pas de clé HuggingFace/Google |
+| **Vision IA non configurée** | Détection photo = stub (`poulet-riz`) | Pas de clé Google Vision |
 | **LLM non configuré** | Suggestions textuelles = statiques | Pas de clé LLM/Ollama |
 | **Cache in-memory** | Rechargement à chaque restart | TTL 10 min, pas de Redis |
 | **Score prise_de_masse** | −29% de la cible calorique | Catalogue pauvre en items >400 kcal |
@@ -435,7 +439,7 @@ carbs_g     RMSE=58g        R²=−10.1   dev_moy=−51%
 
 **Moyen terme (avec ML) :**
 - Entraîner un modèle de régression sur les feedbacks workout pour ajuster les poids (actuellement hardcodés)
-- Intégrer HuggingFace pour la vision (`POST /ai/nutrition/analyze` avec photo réelle)
+- Intégrer un modèle de vision pour la détection réelle d'aliments (`POST /ai/nutrition/analyze` avec photo réelle)
 - Collaborative filtering : recommander des repas aimés par des users similaires
 
 **Long terme :**

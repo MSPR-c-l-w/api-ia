@@ -10,7 +10,7 @@ def test_nutrition_analyze_ai_endpoint(client):
     assert response.status_code == 200
     data = response.get_json()
 
-    assert data["modelStatus"] == "stub_ready_for_huggingface"
+    assert data["modelStatus"] == "vision_stub"
     assert isinstance(data["detectedFoods"], list)
     assert data["detectedFoods"][0]["label"]
     assert data["estimatedCalories"] > 0

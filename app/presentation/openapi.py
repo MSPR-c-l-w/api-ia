@@ -98,7 +98,7 @@ def build_openapi_schema() -> dict[str, Any]:
                     "summary": "Analyser un repas (vision + recommandations)",
                     "description": (
                         "Analyse nutritionnelle à partir d'une image (URL ou base64) et de l'objectif "
-                        "utilisateur. Orchestre la détection d'aliments (HuggingFace → Google Vision), "
+                        "utilisateur. Orchestre la détection d'aliments (Google Vision), "
                         "le calcul des macros, la détection des déséquilibres et la génération de "
                         "recommandations personnalisées. Les appels IA sont mis en cache (TTL 1 h "
                         "pour la vision, 24 h pour le LLM) pour limiter les coûts et le rate limiting."
@@ -129,10 +129,9 @@ def build_openapi_schema() -> dict[str, Any]:
                     "tags": ["nutrition"],
                     "summary": "Générer un plan repas 7 jours personnalisé",
                     "description": (
-                        "Génère un plan hebdomadaire via LLM (Ollama/HuggingFace) selon l'objectif, "
+                        "Génère un plan hebdomadaire via LLM (Ollama) selon l'objectif, "
                         "les contraintes alimentaires et les allergies. Bascule sur un plan statique "
-                        "si le LLM est indisponible (timeout 30 s). "
-                        "Rate limits HuggingFace : 30 000 requêtes/mois (plan gratuit)."
+                        "si le LLM est indisponible (timeout 30 s)."
                     ),
                     "requestBody": {
                         "required": True,

@@ -37,7 +37,7 @@ def test_analyze_meal_falls_back_to_stub_when_all_providers_empty():
 
     result = asyncio.run(use_case.execute(payload))
 
-    assert result.model_status == "stub_ready_for_huggingface"
+    assert result.model_status == "vision_stub"
     assert result.detected_foods[0].label == "poulet-riz"
 
 
@@ -49,7 +49,7 @@ def test_analyze_meal_filters_low_confidence_detections():
     result = asyncio.run(use_case.execute(payload))
 
     # Low-confidence detection is filtered out → falls back to stub
-    assert result.model_status == "stub_ready_for_huggingface"
+    assert result.model_status == "vision_stub"
 
 
 def test_analyze_meal_returns_imbalance_status_and_nutrient_details():

@@ -1,6 +1,6 @@
 """LLM provider with static fallback for personalised nutrition suggestions (#89).
 
-Supports Ollama-compatible endpoints and HuggingFace Inference API.
+Supports Ollama-compatible endpoints.
 Falls back to curated static suggestions when the LLM is unavailable.
 """
 
@@ -53,7 +53,7 @@ _IMBALANCE_SUGGESTIONS: dict[str, str] = {
 
 
 class LlmProvider:
-    """HTTP adapter for Ollama / HuggingFace NLP with static fallback."""
+    """HTTP adapter for Ollama NLP with static fallback."""
 
     def __init__(
         self,
