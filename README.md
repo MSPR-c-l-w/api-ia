@@ -22,38 +22,28 @@ Partie de l'[EPIC #79](https://github.com/MSPR-c-l-w/backend/issues/79).
 
 ## Prérequis
 
-- **Docker 24+** (pour lancer depuis Docker Hub)
-- **Python 3.12+** (pour le développement local)
-- **MongoDB 7** (inclus dans le compose)
+- **Docker 24+** — c'est tout. MongoDB est **inclus dans l'image**, aucune installation supplémentaire n'est nécessaire.
+- **Python 3.12+** uniquement si tu travailles sur le code source (développement local).
 
 ---
 
 ## Démarrage rapide — Docker Hub
 
-L'image officielle est publiée sur Docker Hub à chaque merge sur `main`.
+> MongoDB est embarqué dans l'image. Un seul conteneur suffit pour faire tourner le service complet.
 
-### 1. Créer le fichier `.env`
+L'image est publiée automatiquement sur Docker Hub à chaque merge sur `main` :
+`<DOCKERHUB_USERNAME>/api-ia`
 
-```bash
-cp .env.example .env
-# Éditer les valeurs selon votre environnement
-```
+Remplace `<DOCKERHUB_USERNAME>` par le nom d'utilisateur Docker Hub du projet.
 
-Variables minimales requises :
+---
 
-| Variable | Valeur exemple | Description |
-|---|---|---|
-| `MONGODB_URI` | `mongodb://mongo:27017/healthai_coach` | URI MongoDB |
-| `BACKEND_API_KEY` | `votre-clé-secrète` | Clé partagée avec le backend NestJS |
-| `PORT` | `8000` | Port HTTP |
-
-### 2. Lancer avec une seule commande
-
-MongoDB est **intégré dans l'image** — aucun service externe requis.
+### Option A — `docker run` (la plus simple)
 
 ```bash
 docker run -d \
   --name healthai-api \
+  --restart unless-stopped \
   -p 8000:8000 \
   -v healthai_data:/data/db \
   -e ENVIRONMENT=production \
@@ -61,23 +51,33 @@ docker run -d \
   <DOCKERHUB_USERNAME>/api-ia:latest
 ```
 
-Le volume `-v healthai_data:/data/db` garantit la **persistance des données** MongoDB entre les redémarrages.
+**Ce que fait chaque flag :**
 
-API disponible sur : **http://localhost:8000**
+| Flag | Rôle |
+|---|---|
+| `--restart unless-stopped` | Redémarre automatiquement après un crash ou reboot serveur |
+| `-p 8000:8000` | Expose l'API sur le port 8000 de la machine hôte |
+| `-v healthai_data:/data/db` | **Obligatoire** — persiste les données MongoDB entre les redémarrages |
+| `-e ENVIRONMENT=production` | Désactive `/docs` (Swagger) en production |
+| `-e BACKEND_API_KEY=...` | Clé secrète partagée avec le backend NestJS pour les routes `/recommendations/*` |
 
-### 3. Lancer avec Docker Compose (optionnel)
+> **`BACKEND_API_KEY`** est la seule variable obligatoire. Elle doit correspondre à `WORKOUT_SERVICE_API_KEY` côté backend NestJS.
 
-Créer un `docker-compose.yml` :
+---
+
+### Option B — Docker Compose
+
+Crée un fichier `docker-compose.yml` sur ton serveur :
 
 ```yaml
 services:
   api:
     image: <DOCKERHUB_USERNAME>/api-ia:latest
     ports:
-      - "${PORT:-8000}:8000"
+      - "8000:8000"
     environment:
       ENVIRONMENT: production
-      BACKEND_API_KEY: ${BACKEND_API_KEY}
+      BACKEND_API_KEY: ${BACKEND_API_KEY}   # défini dans un fichier .env local
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
@@ -86,17 +86,29 @@ volumes:
   mongo_data:
 ```
 
+Puis crée un fichier `.env` à côté :
+
+```env
+BACKEND_API_KEY=votre-clé-secrète
+```
+
+Lance le service :
+
 ```bash
 docker compose up -d
 ```
 
-### 4. Utiliser un MongoDB externe (optionnel)
+---
 
-Si tu as déjà un MongoDB, surcharge simplement `MONGODB_URI` :
+### Option C — MongoDB externe (si tu as déjà un serveur MongoDB)
+
+Ajoute simplement `MONGODB_URI` pour pointer vers ton MongoDB existant.
+L'instance MongoDB interne de l'image sera alors ignorée.
 
 ```bash
 docker run -d \
   --name healthai-api \
+  --restart unless-stopped \
   -p 8000:8000 \
   -e ENVIRONMENT=production \
   -e MONGODB_URI="mongodb://mon-serveur:27017/healthai_coach" \
@@ -104,21 +116,33 @@ docker run -d \
   <DOCKERHUB_USERNAME>/api-ia:latest
 ```
 
-### 4. Vérifier que le service est opérationnel
+---
+
+### Vérifier que le service est opérationnel
 
 ```bash
+# Attendre ~15s le temps que MongoDB démarre (premier lancement)
 curl http://localhost:8000/health
-# → {"status": "ok"}
+# → {"status": "ok", "timestamp": "..."}
 ```
 
-### Tags disponibles
+> Au **premier démarrage**, MongoDB initialise ses fichiers de données — prévoir 10–20 secondes avant que le service réponde. Les démarrages suivants sont immédiats.
 
-| Tag | Description |
+---
+
+### Choisir le bon tag
+
+| Tag | À utiliser quand… |
 |---|---|
-| `latest` | Dernier commit mergé sur `main` |
-| `v1.2.3` | Version sémantique précise |
-| `v1.2` | Dernière version du minor `1.2` |
-| `sha-abc1234` | Image liée à un commit précis |
+| `latest` | Tu veux toujours la dernière version stable |
+| `v1.2.3` | Tu veux épingler une version précise (recommandé en production) |
+| `v1.2` | Tu suis les patchs du minor `1.2` automatiquement |
+| `sha-abc1234` | Tu veux une image traçable liée à un commit exact |
+
+```bash
+# Exemple avec version épinglée
+docker run -d ... <DOCKERHUB_USERNAME>/api-ia:v1.0.0
+```
 
 ---
 
@@ -160,15 +184,15 @@ python run.py
 
 ## Variables d'environnement
 
-| Variable | Défaut | Description |
-|---|---|---|
-| `MONGODB_URI` | — | URI MongoDB |
-| `BACKEND_API_KEY` | — | Clé partagée avec le backend NestJS — header `X-API-Key` |
-| `PORT` | `8000` | Port HTTP |
-| `ENVIRONMENT` | `development` | `development` \| `test` \| `production` — en `production`, `/docs` est désactivé |
-| `SECRET_KEY` | — | Clé interne (réservée) |
+| Variable | Défaut image | Obligatoire | Description |
+|---|---|---|---|
+| `BACKEND_API_KEY` | — | **Oui** | Clé partagée avec le backend NestJS — header `X-API-Key` sur `/recommendations/*` |
+| `MONGODB_URI` | `mongodb://localhost:27017/healthai_coach` | Non | URI MongoDB. Par défaut pointe sur le MongoDB **intégré** dans l'image. Surcharger uniquement si tu utilises un MongoDB externe. |
+| `ENVIRONMENT` | `development` | Non | `development` \| `test` \| `production` — en `production`, `/docs` (Swagger) est désactivé |
+| `PORT` | `8000` | Non | Port HTTP du serveur |
+| `SECRET_KEY` | — | Non | Clé interne (réservée pour évolutions futures) |
 
-Copier `.env.example` vers `.env`.
+Pour le développement local, copier `.env.example` vers `.env`.
 
 ---
 
