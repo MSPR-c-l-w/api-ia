@@ -1,0 +1,64 @@
+name: CI — E2E Tests
+
+# Only runs when the PR has the "e2e" label
+on:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+jobs:
+  e2e-tests:
+    name: E2E tests (full stack)
+    if: contains(github.event.pull_request.labels.*.name, 'e2e')
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval \"db.adminCommand('ping')\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      ENVIRONMENT: development
+      MONGODB_URI: mongodb://localhost:27017/healthai_coach_e2e
+      BACKEND_API_KEY: e2e-test-key
+      PORT: 8000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install --no-cache-dir -r requirements-dev.txt
+
+      - name: Start API server in background
+        run: |
+          hypercorn app.main:asgi_app --bind 0.0.0.0:8000 &
+          echo $! > /tmp/api.pid
+          # Wait for the server to be ready (up to 30s)
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && break
+            sleep 1
+          done
+
+      - name: Run E2E tests
+        run: |
+          pytest -m "e2e" \
+            --tb=short \
+            -v \
+          || { code=$?; [ $code -eq 5 ] && echo "No e2e tests collected — skipping" && exit 0; exit $code; }
+
+      - name: Stop API server
+        if: always()
+        run: kill $(cat /tmp/api.pid) 2>/dev/null || true

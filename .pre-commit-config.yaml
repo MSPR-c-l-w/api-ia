@@ -1,0 +1,47 @@
+repos:
+  # Ruff — lint + format (replaces flake8, isort, black)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      - id: ruff
+        name: ruff lint
+        args: [--fix, --exit-non-zero-on-fix]
+        stages: [pre-commit]
+      - id: ruff-format
+        name: ruff format
+        stages: [pre-commit]
+
+  # Standard hygiene checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        stages: [pre-commit]
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+      - id: check-yaml
+        stages: [pre-commit]
+      - id: check-json
+        stages: [pre-commit]
+      - id: check-toml
+        stages: [pre-commit]
+      - id: check-merge-conflict
+        stages: [pre-commit]
+      - id: check-added-large-files
+        args: [--maxkb=500]
+        stages: [pre-commit]
+      - id: detect-private-key
+        stages: [pre-commit]
+      - id: no-commit-to-branch
+        args: [--branch, main]
+        stages: [pre-commit]
+
+  # Pre-push: run unit tests before pushing
+  - repo: local
+    hooks:
+      - id: pytest-unit
+        name: Unit tests (pre-push guard)
+        entry: python -m pytest -m "not integration and not e2e" --no-header -q --tb=short
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

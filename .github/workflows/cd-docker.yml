@@ -1,0 +1,160 @@
+name: CD — Docker Hub
+
+# Triggered on every push to main (= PR merge) AND on version tags created by
+# the release pipeline.  docker/metadata-action automatically generates the
+# right set of tags for each event type.
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: false   # never cancel a running push to Docker Hub
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # 1. Build a local image and scan it for HIGH/CRITICAL CVEs
+  # ─────────────────────────────────────────────────────────────
+  security-scan:
+    name: Security scan (Trivy)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # allows uploading SARIF to GitHub Security tab
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for scanning (local, not pushed)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: healthai-coach-api:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.31.0
+        with:
+          image-ref: healthai-coach-api:scan
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"   # report but don't fail — gate is done below
+
+      - name: Upload Trivy SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Fail on CRITICAL CVEs
+        uses: aquasecurity/trivy-action@0.31.0
+        with:
+          image-ref: healthai-coach-api:scan
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  # ─────────────────────────────────────────────────────────────
+  # 2. Build multi-platform image and push to Docker Hub
+  # ─────────────────────────────────────────────────────────────
+  push:
+    name: Build & push (multi-platform)
+    runs-on: ubuntu-latest
+    needs: security-scan
+    permissions:
+      contents: read
+      packages: write
+      id-token: write   # for cosign / OIDC if added later
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Generate OCI-compliant image tags ──────────────────
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/api-ia
+          tags: |
+            # branch push → sha-<short-sha>
+            type=sha,prefix=sha-,format=short
+            # main branch → latest
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            # semver tag → v1.2.3, v1.2, v1
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+          labels: |
+            org.opencontainers.image.title=HealthAI Coach API
+            org.opencontainers.image.description=Microservice Flask pour les recommandations nutrition et sport IA
+            org.opencontainers.image.vendor=MSPR-c-l-w
+
+      # ── Set up QEMU for cross-platform emulation ───────────
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # ── Set up Buildx (enables multi-platform + cache) ─────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── Authenticate to Docker Hub ─────────────────────────
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ── Build and push ─────────────────────────────────────
+      - name: Build and push image
+        id: build-push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Persist build cache across runs (GitHub-hosted cache)
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ steps.meta.outputs.version }}
+          provenance: true    # SLSA provenance attestation
+          sbom: true          # Software Bill of Materials
+
+      # ── Update Docker Hub description from README ──────────
+      - name: Update Docker Hub README
+        uses: peter-evans/dockerhub-description@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/api-ia
+          readme-filepath: ./README.md
+          short-description: "Microservice IA Flask — nutrition & sport recommendations"
+
+      # ── Summary ───────────────────────────────────────────
+      - name: Build summary
+        run: |
+          echo "### Docker image pushed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Digest:** \`${{ steps.build-push.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

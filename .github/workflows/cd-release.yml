@@ -1,0 +1,67 @@
+name: CD — Release (semantic versioning)
+
+# Runs on every push to main (= PR merge).
+# python-semantic-release reads conventional commits since the last tag and
+# determines if a new release is needed (feat → minor, fix/perf → patch).
+# If no releasable commit is found the job exits cleanly with no side-effects.
+on:
+  push:
+    branches:
+      - main
+
+# Prevent two release jobs from running simultaneously (git race condition)
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Semantic release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write       # push version commit + tag
+      id-token: write       # OIDC (future PyPI trusted publishing)
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history is required to determine the correct version bump
+          fetch-depth: 0
+          # Use a PAT so the release commit can trigger downstream workflows
+          # (the default GITHUB_TOKEN cannot trigger other workflows)
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install python-semantic-release
+        run: pip install --no-cache-dir "python-semantic-release>=9.0.0"
+
+      # Configure git identity for the release commit
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Bump version, update CHANGELOG.md, commit and tag
+      - name: Determine & apply version bump
+        run: semantic-release version
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      # Create GitHub Release and upload any dist assets
+      - name: Publish GitHub Release
+        run: semantic-release publish
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      # Surface the new version in the job summary
+      - name: Release summary
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "no new release")
+          echo "### Release outcome" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`$VERSION\`" >> $GITHUB_STEP_SUMMARY

@@ -1,14 +1,178 @@
-# HealthAI Coach API (api-ia)
+# HealthAI Coach API (`api-ia`)
 
-Micro-service **Flask** + **MongoDB** (Motor) pour l'analyse nutritionnelle et les recommandations sportives IA.
+Microservice **Flask** + **MongoDB** (Motor) pour l'analyse nutritionnelle et les recommandations sportives IA.
 
-Partie de l'[EPIC #79](https://github.com/MSPR-c-l-w/backend/issues/79) (issues suivies sur le dépôt `backend`).
+Partie de l'[EPIC #79](https://github.com/MSPR-c-l-w/backend/issues/79).
+
+---
+
+## Table des matières
+
+- [Prérequis](#prérequis)
+- [Démarrage rapide — Docker Hub](#démarrage-rapide--docker-hub)
+- [Démarrage local (développement)](#démarrage-local-développement)
+- [Variables d'environnement](#variables-denvironnement)
+- [Structure](#structure-clean-architecture)
+- [Endpoints](#endpoints)
+- [Tests](#tests)
+- [CI/CD](#cicd)
+- [Contribution](#contribution)
+
+---
 
 ## Prérequis
 
-- **Python 3.12+**
-- **MongoDB 7** (local ou via Docker)
-- Clé API partagée avec le backend NestJS (`BACKEND_API_KEY` = `WORKOUT_SERVICE_API_KEY`)
+- **Docker 24+** (pour lancer depuis Docker Hub)
+- **Python 3.12+** (pour le développement local)
+- **MongoDB 7** (inclus dans le compose)
+
+---
+
+## Démarrage rapide — Docker Hub
+
+L'image officielle est publiée sur Docker Hub à chaque merge sur `main`.
+
+### 1. Créer le fichier `.env`
+
+```bash
+cp .env.example .env
+# Éditer les valeurs selon votre environnement
+```
+
+Variables minimales requises :
+
+| Variable | Valeur exemple | Description |
+|---|---|---|
+| `MONGODB_URI` | `mongodb://mongo:27017/healthai_coach` | URI MongoDB |
+| `BACKEND_API_KEY` | `votre-clé-secrète` | Clé partagée avec le backend NestJS |
+| `PORT` | `8000` | Port HTTP |
+
+### 2. Lancer avec Docker Compose (recommandé)
+
+Créer un `docker-compose.yml` :
+
+```yaml
+services:
+  api:
+    image: <DOCKERHUB_USERNAME>/api-ia:latest
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      ENVIRONMENT: production
+      MONGODB_URI: mongodb://mongo:27017/healthai_coach
+      BACKEND_API_KEY: ${BACKEND_API_KEY}
+      PORT: 8000
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mongo_data:
+```
+
+```bash
+docker compose up -d
+```
+
+API disponible sur : **http://localhost:8000**
+
+### 3. Lancer uniquement l'API (MongoDB existant)
+
+```bash
+docker run -d \
+  --name healthai-api \
+  -p 8000:8000 \
+  -e ENVIRONMENT=production \
+  -e MONGODB_URI="mongodb://host.docker.internal:27017/healthai_coach" \
+  -e BACKEND_API_KEY="votre-clé-secrète" \
+  <DOCKERHUB_USERNAME>/api-ia:latest
+```
+
+### 4. Vérifier que le service est opérationnel
+
+```bash
+curl http://localhost:8000/health
+# → {"status": "ok"}
+```
+
+### Tags disponibles
+
+| Tag | Description |
+|---|---|
+| `latest` | Dernier commit mergé sur `main` |
+| `v1.2.3` | Version sémantique précise |
+| `v1.2` | Dernière version du minor `1.2` |
+| `sha-abc1234` | Image liée à un commit précis |
+
+---
+
+## Démarrage local (développement)
+
+### Installation
+
+```bash
+python -m venv .venv
+source .venv/bin/activate          # Windows : .venv\Scripts\activate
+pip install -r requirements-dev.txt
+cp .env.example .env
+```
+
+### Installer les hooks git (équivalent Husky)
+
+```bash
+make setup-hooks
+# ou manuellement :
+pre-commit install --hook-type pre-commit
+pre-commit install --hook-type pre-push
+```
+
+Les hooks activés :
+- **pre-commit** : lint ruff, format ruff, vérifications YAML/JSON, protection de clés privées, blocage des commits directs sur `main`
+- **pre-push** : exécution des tests unitaires
+
+### Lancer l'API
+
+```bash
+# Via Docker Compose (avec MongoDB intégré)
+make docker-run
+
+# Ou directement
+python run.py
+```
+
+---
+
+## Variables d'environnement
+
+| Variable | Défaut | Description |
+|---|---|---|
+| `MONGODB_URI` | — | URI MongoDB |
+| `BACKEND_API_KEY` | — | Clé partagée avec le backend NestJS — header `X-API-Key` |
+| `PORT` | `8000` | Port HTTP |
+| `ENVIRONMENT` | `development` | `development` \| `test` \| `production` — en `production`, `/docs` est désactivé |
+| `SECRET_KEY` | — | Clé interne (réservée) |
+
+Copier `.env.example` vers `.env`.
+
+---
 
 ## Structure (clean architecture)
 
@@ -21,88 +185,88 @@ app/
   composition/        # Container (injection de dépendances)
   routers/            # Blueprints Flask
   main.py
+tests/                # pytest — unit / integration / e2e
+.github/workflows/    # CI/CD pipelines
 docs/
-  architecture.md
-  mspr-contexte.md
-  mongodb-schema.md
-AGENTS.md             # Guide agents IA
-openapi.json
-tests/
 ```
 
-Voir [docs/architecture.md](docs/architecture.md) et [AGENTS.md](AGENTS.md).
-
-## Variables d'environnement
-
-| Variable | Description |
-|----------|-------------|
-| `MONGODB_URI` | URI MongoDB (ex. `mongodb://localhost:27017/healthai_coach`) |
-| `BACKEND_API_KEY` | Clé partagée avec le backend NestJS — header `X-API-Key` sur `/recommendations/*` |
-| `PORT` | Port HTTP (défaut `8000`) |
-| `ENVIRONMENT` | `development` \| `test` \| `production` — en `production`, `/docs` est désactivé |
-| `SECRET_KEY` | Clé interne (réservée évolutions futures) |
-
-Copier `.env.example` vers `.env`.
-
-## Démarrage local
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate   # Linux/macOS : source .venv/bin/activate
-pip install -r requirements.txt
-python run.py
-```
-
-API : http://127.0.0.1:8000
-
-## Docker
-
-```bash
-docker compose up --build
-```
-
-Services : API (`8000`) + MongoDB (`27017`).
+---
 
 ## Endpoints
 
 | Méthode | Chemin | Auth | Description |
-|---------|--------|------|-------------|
+|---|---|---|---|
 | `GET` | `/health` | — | Santé du service |
-| `POST` | `/api/nutrition/analyze` | — | Analyse nutrition (stub) |
+| `POST` | `/api/nutrition/analyze` | — | Analyse nutrition |
 | `POST` | `/recommendations/workout` | `X-API-Key` | Programme hebdomadaire |
 | `POST` | `/recommendations/workout/{id}/feedback` | `X-API-Key` | Retour utilisateur |
 
-## OpenAPI
+**Swagger UI** (hors production) : http://localhost:8000/docs
 
-- **Swagger UI** (développement) : http://127.0.0.1:8000/docs — ajouter le header `X-API-Key` dans l'UI pour tester `/recommendations/*`
-- **JSON live** : http://127.0.0.1:8000/openapi.json
-- **Export versionné** :
-
-```bash
-python scripts/export_openapi.py
-```
-
-Génère `openapi.json` à la racine (à committer après modification des routes ou schémas).
+---
 
 ## Tests
 
 ```bash
-pytest
+make test-unit          # Tests unitaires + rapport de couverture
+make test-integration   # Tests d'intégration (nécessite MongoDB)
+make test-e2e           # Tests end-to-end
+make test               # Tout sauf e2e
 ```
 
-`ENVIRONMENT=test` désactive la connexion MongoDB au démarrage (voir `tests/conftest.py`).
+Marqueurs pytest :
 
-## Schéma MongoDB
+| Marker | Description |
+|---|---|
+| `@pytest.mark.unit` | Aucun service externe requis |
+| `@pytest.mark.integration` | Nécessite MongoDB actif |
+| `@pytest.mark.e2e` | Nécessite le stack complet |
 
-Voir [docs/mongodb-schema.md](docs/mongodb-schema.md).
+---
 
-```bash
-python scripts/seed_mongodb.py
-```
+## CI/CD
 
-## Intégration backend (#99)
+### Pipelines CI (`.github/workflows/`)
 
-Le backend NestJS appelle ce service via `WORKOUT_SERVICE_URL` + `WORKOUT_SERVICE_API_KEY` :
+| Fichier | Déclencheur | Description |
+|---|---|---|
+| `ci-quality.yml` | Tout push / PR | Lint (ruff) + vérification du format |
+| `ci-unit-tests.yml` | Tout push / PR | Tests unitaires + rapport coverage |
+| `ci-integration-tests.yml` | Tout push / PR | Tests d'intégration (service MongoDB) |
+| `ci-e2e.yml` | PR avec label **`e2e`** | Tests end-to-end (stack complet) |
 
-- `POST {WORKOUT_SERVICE_URL}/recommendations/workout`
-- Référence SQL : `AiWorkoutRecommendation.microservice_ref_id` = `programId` MongoDB
+### Pipelines CD
+
+| Fichier | Déclencheur | Description |
+|---|---|---|
+| `cd-docker.yml` | Push sur `main` ou tag `v*.*.*` | Scan Trivy → build multi-platform → push Docker Hub |
+| `cd-release.yml` | Push sur `main` | Semantic release (CHANGELOG + tag + GitHub Release) |
+
+### Secrets GitHub requis
+
+| Secret | Description |
+|---|---|
+| `DOCKERHUB_USERNAME` | Nom d'utilisateur Docker Hub |
+| `DOCKERHUB_TOKEN` | Access token Docker Hub (lecture/écriture) |
+| `GH_PAT` | Personal Access Token GitHub (optionnel — permet de déclencher d'autres workflows depuis la release) |
+| `CODECOV_TOKEN` | Token Codecov (optionnel) |
+
+### Conventional Commits (pour les releases)
+
+Le versioning sémantique est basé sur les messages de commit :
+
+| Préfixe | Bump |
+|---|---|
+| `feat:` | Minor (1.**X**.0) |
+| `fix:`, `perf:` | Patch (1.0.**X**) |
+| `BREAKING CHANGE` | Major (**X**.0.0) |
+
+---
+
+## Contribution
+
+1. Forker / créer une branche depuis `main`
+2. Installer les hooks : `make setup-hooks`
+3. Commiter avec des messages [Conventional Commits](https://www.conventionalcommits.org/)
+4. Ouvrir une PR — les pipelines CI se déclenchent automatiquement
+5. Ajouter le label `e2e` sur la PR pour activer les tests end-to-end
