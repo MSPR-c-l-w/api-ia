@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.1.2 (2026-06-01)
+
+### Bug Fixes
+
+- **docker**: Pin base image to python:3.12-slim-bookworm
+  ([`a68d58c`](https://github.com/MSPR-c-l-w/api-ia/commit/a68d58c6437aba51729035eebcb267c5ae80c426))
+
+
 ## v0.1.1 (2026-06-01)
 
 ### Bug Fixes
