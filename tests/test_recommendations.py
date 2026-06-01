@@ -69,9 +69,7 @@ def test_workout_generates_weekly_program(client):
                 assert "id" in exercise
                 assert "estimatedDurationMinutes" in exercise
 
-    exercise_ids = [
-        ex["id"] for day in data["programme"] for ex in day["exercices"]
-    ]
+    exercise_ids = [ex["id"] for day in data["programme"] for ex in day["exercices"]]
     assert "squat-pdc" not in exercise_ids
     assert len(exercise_ids) == len(set(exercise_ids))
 

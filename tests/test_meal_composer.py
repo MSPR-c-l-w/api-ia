@@ -6,27 +6,25 @@ from app.contexts.nutrition.domain.meal_composer import (
     FoodCategory,
     MealComposerService,
     _classify,
-    _combine_macros,
     _score_meal,
 )
 from app.contexts.nutrition.domain.models import HealthProfile, Macros
 
-
 # Petit catalogue de test
 _CATALOG: dict[str, tuple[float, float, float, float, float]] = {
-    "poulet grillé (150g)":    (248, 46.5,  0.0,  5.4, 0.0),
-    "riz basmati (100g)":      (130,  2.7, 28.0,  0.3, 0.4),
-    "brocoli cuit (100g)":     ( 35,  2.9,  7.2,  0.4, 2.6),
-    "yaourt nature (150g)":    ( 88,  5.3,  7.1,  5.0, 0.0),
-    "flocons d'avoine (50g)":  (190,  6.5, 33.5,  3.3, 4.1),
-    "saumon (150g)":           (312, 30.0,  0.0, 19.5, 0.0),
-    "quinoa (100g)":           (120,  4.4, 21.0,  1.9, 2.8),
-    "lentilles (100g)":        (116,  9.0, 20.0,  0.4, 8.0),
-    "tomate (100g)":           ( 18,  0.9,  3.9,  0.2, 1.2),
-    "pomme (1 fruit)":         ( 81,  0.4, 21.6,  0.2, 3.7),
-    "amandes (30g)":           (174,  6.3,  6.1, 15.1, 3.8),
-    "tofu (100g)":             ( 76,  8.0,  1.9,  4.8, 0.3),
-    "patate douce (150g)":     (129,  2.4, 30.0,  0.2, 4.5),
+    "poulet grillé (150g)": (248, 46.5, 0.0, 5.4, 0.0),
+    "riz basmati (100g)": (130, 2.7, 28.0, 0.3, 0.4),
+    "brocoli cuit (100g)": (35, 2.9, 7.2, 0.4, 2.6),
+    "yaourt nature (150g)": (88, 5.3, 7.1, 5.0, 0.0),
+    "flocons d'avoine (50g)": (190, 6.5, 33.5, 3.3, 4.1),
+    "saumon (150g)": (312, 30.0, 0.0, 19.5, 0.0),
+    "quinoa (100g)": (120, 4.4, 21.0, 1.9, 2.8),
+    "lentilles (100g)": (116, 9.0, 20.0, 0.4, 8.0),
+    "tomate (100g)": (18, 0.9, 3.9, 0.2, 1.2),
+    "pomme (1 fruit)": (81, 0.4, 21.6, 0.2, 3.7),
+    "amandes (30g)": (174, 6.3, 6.1, 15.1, 3.8),
+    "tofu (100g)": (76, 8.0, 1.9, 4.8, 0.3),
+    "patate douce (150g)": (129, 2.4, 30.0, 0.2, 4.5),
 }
 
 
@@ -44,6 +42,7 @@ def _default_profile() -> HealthProfile:
 # Classify tests
 # ---------------------------------------------------------------------------
 
+
 def test_classify_protein():
     macros = Macros(calories=248, proteins_g=46.5, carbs_g=0, fats_g=5.4, fibers_g=0)
     assert _classify("poulet grillé", macros) == FoodCategory.PROTEIN
@@ -60,13 +59,16 @@ def test_classify_vegetable():
 
 
 def test_classify_breakfast_keyword():
-    macros = Macros(calories=190, proteins_g=6.5, carbs_g=33.5, fats_g=3.3, fibers_g=4.1)
+    macros = Macros(
+        calories=190, proteins_g=6.5, carbs_g=33.5, fats_g=3.3, fibers_g=4.1
+    )
     assert _classify("flocons d'avoine", macros) == FoodCategory.BREAKFAST
 
 
 # ---------------------------------------------------------------------------
 # Score tests
 # ---------------------------------------------------------------------------
+
 
 def test_score_perfect_meal():
     target = Macros(calories=500, proteins_g=25, carbs_g=60, fats_g=18, fibers_g=7)
@@ -86,6 +88,7 @@ def test_score_range():
 # ---------------------------------------------------------------------------
 # Composer tests
 # ---------------------------------------------------------------------------
+
 
 def test_compose_week_returns_7_days():
     composer = MealComposerService(_CATALOG)
@@ -112,7 +115,9 @@ def test_compose_week_scores_between_0_and_1():
     composer = MealComposerService(_CATALOG)
     days = composer.compose_week(_default_profile())
     for day in days:
-        assert 0.0 <= day["score"] <= 1.0, f"Score invalide jour {day['day']}: {day['score']}"
+        assert 0.0 <= day["score"] <= 1.0, (
+            f"Score invalide jour {day['day']}: {day['score']}"
+        )
 
 
 def test_compose_week_calories_positive():
@@ -143,7 +148,9 @@ def test_compose_week_variety_across_days():
 def test_score_meal_method():
     composer = MealComposerService(_CATALOG)
     profile = _default_profile()
-    result = composer.score_meal(["poulet grillé (150g)", "riz basmati (100g)"], profile, "lunch")
+    result = composer.score_meal(
+        ["poulet grillé (150g)", "riz basmati (100g)"], profile, "lunch"
+    )
     assert 0.0 <= result.score <= 1.0
     assert result.macros.calories > 0
 
@@ -159,6 +166,7 @@ def test_empty_catalog_gracefully():
 # ---------------------------------------------------------------------------
 # Integration : real Kaggle catalog
 # ---------------------------------------------------------------------------
+
 
 def test_compose_week_real_catalog():
     """Test d'intégration avec les 601 aliments du backend."""

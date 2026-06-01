@@ -25,7 +25,6 @@ jobs:
     env:
       ENVIRONMENT: test
       MONGODB_URI: mongodb://localhost:27017/healthai_coach_test
-      BACKEND_API_KEY: test-api-key
 
     steps:
       - uses: actions/checkout@v4

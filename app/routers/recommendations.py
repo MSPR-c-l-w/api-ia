@@ -11,7 +11,9 @@ from app.dependencies.api_key import require_api_key
 from app.presentation.exception_handlers import map_application_errors
 from app.presentation.http import model_response, parse_json
 
-recommendations_bp = Blueprint("recommendations", __name__, url_prefix="/recommendations")
+recommendations_bp = Blueprint(
+    "recommendations", __name__, url_prefix="/recommendations"
+)
 
 
 @recommendations_bp.post("/workout")
@@ -20,7 +22,9 @@ recommendations_bp = Blueprint("recommendations", __name__, url_prefix="/recomme
 async def generate_workout_program():
     """Génère un programme d'entraînement hebdomadaire personnalisé."""
     payload = parse_json(WorkoutProgramRequest)
-    result: WorkoutProgramResponse = await get_container().create_workout_program.execute(payload)
+    result: WorkoutProgramResponse = (
+        await get_container().create_workout_program.execute(payload)
+    )
     return model_response(result)
 
 
@@ -30,8 +34,10 @@ async def generate_workout_program():
 async def post_workout_feedback(program_id: str):
     """Enregistre un retour utilisateur et ajuste le profil sportif."""
     payload = parse_json(WorkoutFeedbackRequest)
-    result: WorkoutFeedbackResponse = await get_container().submit_workout_feedback.execute(
-        program_id,
-        payload,
+    result: WorkoutFeedbackResponse = (
+        await get_container().submit_workout_feedback.execute(
+            program_id,
+            payload,
+        )
     )
     return model_response(result)

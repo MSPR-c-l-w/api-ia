@@ -17,7 +17,9 @@ class WorkoutProgramRepository(Protocol):
     async def find_raw_by_id(self, program_id: str) -> dict[str, Any] | None:
         """Retourne le document brut ou None si introuvable."""
 
-    async def get_recent_exercise_ids(self, user_id: int, *, weeks: int = 2) -> list[str]:
+    async def get_recent_exercise_ids(
+        self, user_id: int, *, weeks: int = 2
+    ) -> list[str]:
         """IDs d'exercices utilisés récemment (rotation anti-répétition)."""
 
 
@@ -25,7 +27,9 @@ class WorkoutFeedbackRepository(Protocol):
     async def save(self, feedback: WorkoutFeedback) -> str:
         """Persiste un feedback et retourne son identifiant."""
 
-    async def count_recent_trop_facile(self, user_id: int, *, window_days: int = 30) -> int:
+    async def count_recent_trop_facile(
+        self, user_id: int, *, window_days: int = 30
+    ) -> int:
         """Nombre de signaux « trop facile » sur la fenêtre glissante."""
 
 

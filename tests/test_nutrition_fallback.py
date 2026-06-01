@@ -21,8 +21,12 @@ class LowConfidenceProvider:
 
 
 def test_analyze_meal_uses_google_fallback_when_primary_empty():
-    use_case = AnalyzeMealUseCase(vision_providers=[EmptyProvider(), GoogleVisionProvider()])
-    payload = NutritionAnalysisRequest(imageUrl="https://example.com/meal.jpg", userGoal="equilibre")
+    use_case = AnalyzeMealUseCase(
+        vision_providers=[EmptyProvider(), GoogleVisionProvider()]
+    )
+    payload = NutritionAnalysisRequest(
+        imageUrl="https://example.com/meal.jpg", userGoal="equilibre"
+    )
 
     result = asyncio.run(use_case.execute(payload))
 
@@ -33,7 +37,9 @@ def test_analyze_meal_uses_google_fallback_when_primary_empty():
 
 def test_analyze_meal_falls_back_to_stub_when_all_providers_empty():
     use_case = AnalyzeMealUseCase(vision_providers=[EmptyProvider(), EmptyProvider()])
-    payload = NutritionAnalysisRequest(imageUrl="https://example.com/meal.jpg", userGoal="equilibre")
+    payload = NutritionAnalysisRequest(
+        imageUrl="https://example.com/meal.jpg", userGoal="equilibre"
+    )
 
     result = asyncio.run(use_case.execute(payload))
 
@@ -44,7 +50,9 @@ def test_analyze_meal_falls_back_to_stub_when_all_providers_empty():
 def test_analyze_meal_filters_low_confidence_detections():
     """Detections below 0.5 confidence are treated as no detection → stub fallback."""
     use_case = AnalyzeMealUseCase(vision_providers=[LowConfidenceProvider()])
-    payload = NutritionAnalysisRequest(imageUrl="https://example.com/meal.jpg", userGoal="equilibre")
+    payload = NutritionAnalysisRequest(
+        imageUrl="https://example.com/meal.jpg", userGoal="equilibre"
+    )
 
     result = asyncio.run(use_case.execute(payload))
 
@@ -54,7 +62,9 @@ def test_analyze_meal_filters_low_confidence_detections():
 
 def test_analyze_meal_returns_imbalance_status_and_nutrient_details():
     use_case = AnalyzeMealUseCase(vision_providers=[GoogleVisionProvider()])
-    payload = NutritionAnalysisRequest(imageUrl="https://example.com/meal.jpg", userGoal="perte_de_poids")
+    payload = NutritionAnalysisRequest(
+        imageUrl="https://example.com/meal.jpg", userGoal="perte_de_poids"
+    )
 
     result = asyncio.run(use_case.execute(payload))
 
@@ -67,7 +77,9 @@ def test_analyze_meal_returns_imbalance_status_and_nutrient_details():
 
 def test_analyze_meal_feedback_list_not_empty():
     use_case = AnalyzeMealUseCase(vision_providers=[EmptyProvider()])
-    payload = NutritionAnalysisRequest(imageUrl="https://example.com/meal.jpg", userGoal="prise_de_masse")
+    payload = NutritionAnalysisRequest(
+        imageUrl="https://example.com/meal.jpg", userGoal="prise_de_masse"
+    )
 
     result = asyncio.run(use_case.execute(payload))
 

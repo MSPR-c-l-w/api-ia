@@ -2,15 +2,16 @@
 
 import asyncio
 
-from app.contexts.nutrition.domain.tdee import TdeeCalculator
 from app.contexts.nutrition.application.use_cases.analyze_meal import AnalyzeMealUseCase
-from app.contexts.nutrition.application.use_cases.generate_meal_plan import GenerateMealPlanUseCase
-from app.contexts.nutrition.domain.models import VisionDetection
-from app.contexts.nutrition.presentation.schemas import (
-    NutritionAnalysisRequest,
-    MealPlanRequest,
+from app.contexts.nutrition.application.use_cases.generate_meal_plan import (
+    GenerateMealPlanUseCase,
 )
-
+from app.contexts.nutrition.domain.models import VisionDetection
+from app.contexts.nutrition.domain.tdee import TdeeCalculator
+from app.contexts.nutrition.presentation.schemas import (
+    MealPlanRequest,
+    NutritionAnalysisRequest,
+)
 
 # ---------------------------------------------------------------------------
 # TdeeCalculator unit tests
@@ -20,8 +21,12 @@ from app.contexts.nutrition.presentation.schemas import (
 def test_tdee_male_moderately_active():
     calc = TdeeCalculator()
     profile = calc.compute(
-        weight_kg=80, height_cm=180, age_years=30,
-        gender="male", physical_activity_level="moderately_active", goal="equilibre"
+        weight_kg=80,
+        height_cm=180,
+        age_years=30,
+        gender="male",
+        physical_activity_level="moderately_active",
+        goal="equilibre",
     )
     # BMR = 10*80 + 6.25*180 - 5*30 + 5 = 800+1125-150+5 = 1780 kcal
     # TDEE = 1780 * 1.55 ≈ 2759 kcal
@@ -34,8 +39,12 @@ def test_tdee_male_moderately_active():
 def test_tdee_female_sedentary_weight_loss():
     calc = TdeeCalculator()
     profile = calc.compute(
-        weight_kg=65, height_cm=162, age_years=45,
-        gender="female", physical_activity_level="sedentary", goal="perte_de_poids"
+        weight_kg=65,
+        height_cm=162,
+        age_years=45,
+        gender="female",
+        physical_activity_level="sedentary",
+        goal="perte_de_poids",
     )
     # BMR ≈ 10*65 + 6.25*162 - 5*45 - 161 = 650+1012.5-225-161 = 1276.5
     # TDEE = 1276.5 * 1.2 ≈ 1532 kcal
@@ -46,8 +55,13 @@ def test_tdee_female_sedentary_weight_loss():
 
 def test_tdee_bulk_has_higher_calories_than_cut():
     calc = TdeeCalculator()
-    base = dict(weight_kg=75, height_cm=175, age_years=25, gender="male",
-                physical_activity_level="moderately_active")
+    base = {
+        "weight_kg": 75,
+        "height_cm": 175,
+        "age_years": 25,
+        "gender": "male",
+        "physical_activity_level": "moderately_active",
+    }
     bulk = calc.compute(**base, goal="prise_de_masse")
     cut = calc.compute(**base, goal="perte_de_poids")
     assert bulk.daily_calories_target > cut.daily_calories_target
@@ -57,8 +71,12 @@ def test_tdee_minimum_calories_floor():
     """Very light person should never go below 1200 kcal."""
     calc = TdeeCalculator()
     profile = calc.compute(
-        weight_kg=40, height_cm=150, age_years=80,
-        gender="female", physical_activity_level="sedentary", goal="perte_de_poids"
+        weight_kg=40,
+        height_cm=150,
+        age_years=80,
+        gender="female",
+        physical_activity_level="sedentary",
+        goal="perte_de_poids",
     )
     assert profile.daily_calories_target >= 1200
 
@@ -66,14 +84,24 @@ def test_tdee_minimum_calories_floor():
 def test_tdee_unknown_activity_defaults_to_moderate():
     calc = TdeeCalculator()
     profile_unknown = calc.compute(
-        weight_kg=70, height_cm=170, age_years=30,
-        gender="male", physical_activity_level="unknown_level", goal="equilibre"
+        weight_kg=70,
+        height_cm=170,
+        age_years=30,
+        gender="male",
+        physical_activity_level="unknown_level",
+        goal="equilibre",
     )
     profile_moderate = calc.compute(
-        weight_kg=70, height_cm=170, age_years=30,
-        gender="male", physical_activity_level="moderately_active", goal="equilibre"
+        weight_kg=70,
+        height_cm=170,
+        age_years=30,
+        gender="male",
+        physical_activity_level="moderately_active",
+        goal="equilibre",
     )
-    assert profile_unknown.daily_calories_target == profile_moderate.daily_calories_target
+    assert (
+        profile_unknown.daily_calories_target == profile_moderate.daily_calories_target
+    )
 
 
 # ---------------------------------------------------------------------------

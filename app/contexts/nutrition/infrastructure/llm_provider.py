@@ -93,7 +93,9 @@ class LlmProvider:
         if not self._endpoint:
             return None
 
-        allergies_text = f"Allergies à exclure : {', '.join(allergies)}." if allergies else ""
+        allergies_text = (
+            f"Allergies à exclure : {', '.join(allergies)}." if allergies else ""
+        )
         constraints_text = (
             f"Contraintes alimentaires : {', '.join(dietary_constraints)}."
             if dietary_constraints
@@ -140,7 +142,9 @@ class LlmProvider:
             'au format JSON : {"suggestions": ["...", "..."]}'
         )
 
-        raw = await self._post_json({"model": "mistral", "prompt": prompt, "stream": False})
+        raw = await self._post_json(
+            {"model": "mistral", "prompt": prompt, "stream": False}
+        )
         if raw is None:
             return None
 

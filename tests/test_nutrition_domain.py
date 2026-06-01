@@ -24,11 +24,11 @@ def test_balanced_meal_returns_equilibre():
         fibers_target_g=25.0,
     )
     macros = Macros(
-        calories=700.0,   # 2100 / 3
+        calories=700.0,  # 2100 / 3
         proteins_g=30.0,  # 90 / 3
-        carbs_g=90.0,     # 270 / 3
-        fats_g=23.3,      # 70 / 3
-        fibers_g=8.3,     # 25 / 3
+        carbs_g=90.0,  # 270 / 3
+        fats_g=23.3,  # 70 / 3
+        fibers_g=8.3,  # 25 / 3
     )
     details, status = svc.detect_imbalances(macros, profile)
 
@@ -39,7 +39,9 @@ def test_balanced_meal_returns_equilibre():
 
 def test_excess_calories_returns_desequilibre():
     svc = _service()
-    macros = Macros(calories=1500.0, proteins_g=25.0, carbs_g=80.0, fats_g=23.0, fibers_g=8.0)
+    macros = Macros(
+        calories=1500.0, proteins_g=25.0, carbs_g=80.0, fats_g=23.0, fibers_g=8.0
+    )
     # default profile → meal target ≈ 667 kcal → 1500 kcal is way above
     details, status = svc.detect_imbalances(macros)
 
@@ -52,7 +54,9 @@ def test_excess_calories_returns_desequilibre():
 def test_protein_deficit_flags_correctly():
     svc = _service()
     # default daily proteins = 75 g → meal target = 25 g; we provide only 5 g
-    macros = Macros(calories=667.0, proteins_g=5.0, carbs_g=83.0, fats_g=23.0, fibers_g=8.3)
+    macros = Macros(
+        calories=667.0, proteins_g=5.0, carbs_g=83.0, fats_g=23.0, fibers_g=8.3
+    )
     details, status = svc.detect_imbalances(macros)
 
     assert status == MealStatus.DESEQUILIBRE
@@ -63,7 +67,9 @@ def test_protein_deficit_flags_correctly():
 
 def test_missing_profile_uses_goal_defaults():
     svc = _service()
-    macros = Macros(calories=600.0, proteins_g=30.0, carbs_g=80.0, fats_g=20.0, fibers_g=8.0)
+    macros = Macros(
+        calories=600.0, proteins_g=30.0, carbs_g=80.0, fats_g=20.0, fibers_g=8.0
+    )
     details_default, _ = svc.detect_imbalances(macros, goal=None)
     details_goal, _ = svc.detect_imbalances(macros, goal="equilibre")
 
@@ -73,7 +79,9 @@ def test_missing_profile_uses_goal_defaults():
 
 def test_details_include_all_nutrients():
     svc = _service()
-    macros = Macros(calories=500.0, proteins_g=20.0, carbs_g=70.0, fats_g=15.0, fibers_g=5.0)
+    macros = Macros(
+        calories=500.0, proteins_g=20.0, carbs_g=70.0, fats_g=15.0, fibers_g=5.0
+    )
     details, _ = svc.detect_imbalances(macros)
 
     names = {d.name for d in details}

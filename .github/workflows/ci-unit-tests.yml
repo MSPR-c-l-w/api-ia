@@ -13,7 +13,6 @@ jobs:
 
     env:
       ENVIRONMENT: test
-      BACKEND_API_KEY: test-api-key
 
     steps:
       - uses: actions/checkout@v4

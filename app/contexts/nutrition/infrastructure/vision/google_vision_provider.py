@@ -10,7 +10,9 @@ from app.contexts.nutrition.domain.models import VisionDetection
 class GoogleVisionProvider:
     """HTTP adapter for Google Vision (or compatible upstream pipeline endpoint)."""
 
-    def __init__(self, endpoint: str | None, api_key: str | None, timeout_seconds: int = 5) -> None:
+    def __init__(
+        self, endpoint: str | None, api_key: str | None, timeout_seconds: int = 5
+    ) -> None:
         self._endpoint = endpoint
         self._api_key = api_key
         self._timeout = timeout_seconds

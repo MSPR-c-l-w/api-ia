@@ -5,9 +5,11 @@ from __future__ import annotations
 import numpy as np
 from sklearn.metrics import mean_squared_error, r2_score
 
-from app.contexts.workout.domain.value_objects.exercise_definition import ExerciseDefinition
-from app.contexts.workout.domain.value_objects.user_profile import UserProfileForScoring
 from app.contexts.workout.domain.services.recommendation_engine import score_exercise
+from app.contexts.workout.domain.value_objects.exercise_definition import (
+    ExerciseDefinition,
+)
+from app.contexts.workout.domain.value_objects.user_profile import UserProfileForScoring
 
 
 def _normalize_rating(rating: int, min_r: int = 1, max_r: int = 5) -> float:

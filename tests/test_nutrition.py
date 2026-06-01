@@ -14,7 +14,12 @@ def test_nutrition_analyze_ai_endpoint(client):
     assert isinstance(data["detectedFoods"], list)
     assert data["detectedFoods"][0]["label"]
     assert data["estimatedCalories"] > 0
-    assert set(data["estimatedMacros"].keys()) == {"proteins_g", "carbs_g", "fats_g", "fibers_g"}
+    assert set(data["estimatedMacros"].keys()) == {
+        "proteins_g",
+        "carbs_g",
+        "fats_g",
+        "fibers_g",
+    }
     assert data["imbalanceStatus"] in ("EQUILIBRE", "DESEQUILIBRE")
     assert isinstance(data["nutrientDetails"], list)
     assert len(data["nutrientDetails"]) > 0
@@ -40,7 +45,9 @@ def test_nutrition_meal_plan_endpoint(client):
     assert data["userGoal"] == "perte_de_poids"
     assert len(data["days"]) == 7
     assert 500 <= data["days"][0]["estimatedCalories"] <= 5000
-    assert data["days"][0]["snack"] is not None  # collation fournie (aliment réel du catalogue)
+    assert (
+        data["days"][0]["snack"] is not None
+    )  # collation fournie (aliment réel du catalogue)
 
 
 def test_nutrition_legacy_analyze_endpoint_still_available(client):

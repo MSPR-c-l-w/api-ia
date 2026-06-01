@@ -1,4 +1,4 @@
-from app.contexts.nutrition.domain.models import MealStatus, VisionDetection
+from app.contexts.nutrition.domain.models import VisionDetection
 from app.contexts.nutrition.domain.ports import (
     CachePort,
     LlmProviderPort,
@@ -40,7 +40,9 @@ class AnalyzeMealUseCase:
     ) -> None:
         from app.contexts.nutrition.infrastructure.cache import AiCacheService
         from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
-        from app.contexts.nutrition.infrastructure.nutrition_lookup import NutritionLookupService
+        from app.contexts.nutrition.infrastructure.nutrition_lookup import (
+            NutritionLookupService,
+        )
 
         self._vision_providers = vision_providers
         self._nutrition_lookup = nutrition_lookup or NutritionLookupService()
@@ -49,7 +51,9 @@ class AnalyzeMealUseCase:
         self._cache = cache or AiCacheService()
         self._tdee_calculator = tdee_calculator or TdeeCalculator()
 
-    async def execute(self, payload: NutritionAnalysisRequest) -> NutritionAnalysisResponse:
+    async def execute(
+        self, payload: NutritionAnalysisRequest
+    ) -> NutritionAnalysisResponse:
         goal = payload.user_goal or "equilibre"
         image_url = str(payload.image_url) if payload.image_url else None
 
@@ -90,8 +94,10 @@ class AnalyzeMealUseCase:
 
         # 2. Confidence filtering + non-food filtering (#85)
         filtered = [
-            d for d in detections
-            if d.confidence >= _CONFIDENCE_THRESHOLD and self._nutrition_lookup.is_food_label(d.label)
+            d
+            for d in detections
+            if d.confidence >= _CONFIDENCE_THRESHOLD
+            and self._nutrition_lookup.is_food_label(d.label)
         ]
 
         if filtered:
@@ -165,6 +171,7 @@ class AnalyzeMealUseCase:
             height_cm=payload.height_cm,
             age_years=payload.age_years,
             gender=payload.gender,
-            physical_activity_level=payload.physical_activity_level or "moderately_active",
+            physical_activity_level=payload.physical_activity_level
+            or "moderately_active",
             daily_calories_target=payload.daily_calories_target,
         )

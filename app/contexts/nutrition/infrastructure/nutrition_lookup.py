@@ -79,9 +79,24 @@ DEFAULT_SERVING_G: float = 150.0
 # Use word boundaries to avoid matching substrings (e.g., "table" matching "vegetable")
 _NON_FOOD_TOKENS = frozenset(
     {
-        "table", "plate", "bowl", "dish", "fork", "knife", "spoon", "glass",
-        "cup", "napkin", "background", "menu", "restaurant", "counter",
-        "cutting board", "tablecloth", "utensil", "tray",
+        "table",
+        "plate",
+        "bowl",
+        "dish",
+        "fork",
+        "knife",
+        "spoon",
+        "glass",
+        "cup",
+        "napkin",
+        "background",
+        "menu",
+        "restaurant",
+        "counter",
+        "cutting board",
+        "tablecloth",
+        "utensil",
+        "tray",
     }
 )
 
@@ -95,7 +110,7 @@ def is_food_label(label: str) -> bool:
     lower = label.lower()
     # Check each token with word boundaries
     for token in _NON_FOOD_TOKENS:
-        if re.search(r'\b' + re.escape(token) + r'\b', lower):
+        if re.search(r"\b" + re.escape(token) + r"\b", lower):
             return False
     return True
 
@@ -103,7 +118,9 @@ def is_food_label(label: str) -> bool:
 class NutritionLookupService:
     """Estimates macronutrients from a list of food names using an embedded table."""
 
-    def lookup(self, food_name: str) -> tuple[tuple[float, float, float, float, float], bool]:
+    def lookup(
+        self, food_name: str
+    ) -> tuple[tuple[float, float, float, float, float], bool]:
         """Return ``(macros_per_100g, estimated)``.
 
         *estimated* is ``True`` when the food is not found in the reference table.

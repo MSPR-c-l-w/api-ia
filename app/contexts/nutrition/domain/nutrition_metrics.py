@@ -17,10 +17,10 @@ from sklearn.metrics import mean_squared_error, r2_score
 
 from app.contexts.nutrition.domain.models import HealthProfile, Macros
 
-
 # ---------------------------------------------------------------------------
 # 1. Lookup accuracy
 # ---------------------------------------------------------------------------
+
 
 def compute_lookup_metrics(
     samples: list[tuple[Macros, Macros]],
@@ -104,7 +104,9 @@ def compute_imbalance_metrics(
     results: dict[str, dict[str, float]] = {}
 
     for nutrient, target_fn in nutrient_targets.items():
-        y_pred = np.array([getattr(macros, nutrient) for macros, _ in meals], dtype=float)
+        y_pred = np.array(
+            [getattr(macros, nutrient) for macros, _ in meals], dtype=float
+        )
         y_true = np.array([target_fn(hp) for _, hp in meals], dtype=float)
 
         mse = float(mean_squared_error(y_true, y_pred))

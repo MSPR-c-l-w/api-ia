@@ -54,9 +54,14 @@ class WorkoutProgramRequest(BaseModel):
 class WorkoutSessionExerciseResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    id: str = Field(description="Identifiant exercice (catalogue interne)", examples=["pont-fessier"])
+    id: str = Field(
+        description="Identifiant exercice (catalogue interne)",
+        examples=["pont-fessier"],
+    )
     sets: int | None = Field(default=None, description="Nombre de séries", examples=[3])
-    reps: int | None = Field(default=None, description="Répétitions par série", examples=[12])
+    reps: int | None = Field(
+        default=None, description="Répétitions par série", examples=[12]
+    )
     duree: int | None = Field(
         default=None,
         description="Durée en minutes si applicable",
@@ -73,7 +78,9 @@ class WorkoutDayResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     jour: str = Field(description="Jour de la semaine", examples=["lundi"])
-    is_rest_day: bool = Field(alias="isRestDay", description="Jour de repos", examples=[False])
+    is_rest_day: bool = Field(
+        alias="isRestDay", description="Jour de repos", examples=[False]
+    )
     estimated_session_minutes: int = Field(
         alias="estimatedSessionMinutes",
         description="Durée totale estimée de la séance (minutes)",
@@ -98,7 +105,9 @@ class WorkoutFeedbackRequest(BaseModel):
         },
     )
 
-    rating: int = Field(ge=1, le=5, description="Note globale du programme (1–5)", examples=[4])
+    rating: int = Field(
+        ge=1, le=5, description="Note globale du programme (1–5)", examples=[4]
+    )
     trop_difficile: bool = Field(
         default=False,
         alias="tropDifficile",
@@ -122,7 +131,9 @@ class WorkoutFeedbackRequest(BaseModel):
 class WorkoutFeedbackResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    feedback_id: str = Field(alias="feedbackId", description="Identifiant MongoDB du feedback")
+    feedback_id: str = Field(
+        alias="feedbackId", description="Identifiant MongoDB du feedback"
+    )
     program_id: str = Field(alias="programId", description="Programme concerné")
     user_id: int = Field(alias="userId", description="Utilisateur", examples=[42])
     profile_niveau: str = Field(
@@ -130,7 +141,9 @@ class WorkoutFeedbackResponse(BaseModel):
         description="Niveau sportif après ajustement éventuel",
         examples=["intermediaire"],
     )
-    created_at: datetime = Field(alias="createdAt", description="Horodatage du feedback")
+    created_at: datetime = Field(
+        alias="createdAt", description="Horodatage du feedback"
+    )
 
 
 class WorkoutProgramResponse(BaseModel):
@@ -152,6 +165,10 @@ class WorkoutProgramResponse(BaseModel):
         description="Identifiant MongoDB du programme (référencé par le backend SQL)",
     )
     user_id: int = Field(alias="userId", description="Utilisateur", examples=[42])
-    statut: str = Field(description="Statut du programme", examples=["ACTIVE", "ARCHIVED"])
+    statut: str = Field(
+        description="Statut du programme", examples=["ACTIVE", "ARCHIVED"]
+    )
     programme: list[WorkoutDayResponse] = Field(description="Planning sur 7 jours")
-    generated_at: datetime = Field(alias="generatedAt", description="Date de génération")
+    generated_at: datetime = Field(
+        alias="generatedAt", description="Date de génération"
+    )

@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
+from app.contexts.workout.domain.data.exercises_catalog import LEVEL_ORDER
 from app.contexts.workout.domain.entities.workout_program import (
     UserFitnessProfile,
     WorkoutFeedback,
@@ -10,12 +11,14 @@ from app.contexts.workout.domain.repositories.protocols import (
     WorkoutProgramRepository,
 )
 from app.contexts.workout.domain.services.recommendation_engine import _level_index
-from app.contexts.workout.domain.data.exercises_catalog import LEVEL_ORDER
 from app.contexts.workout.presentation.schemas import (
     WorkoutFeedbackRequest,
     WorkoutFeedbackResponse,
 )
-from app.shared.application.exceptions import MongoUnavailableError, ProgramNotFoundError
+from app.shared.application.exceptions import (
+    MongoUnavailableError,
+    ProgramNotFoundError,
+)
 from app.shared.infrastructure import database
 
 TEMP_LIMITATION_PREFIX = "exercice_problematique:"

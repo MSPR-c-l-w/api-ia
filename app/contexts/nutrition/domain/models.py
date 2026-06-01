@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
@@ -14,13 +14,13 @@ class VisionDetection:
     confidence: float  # [0, 1]
 
 
-class ImbalanceStatus(str, Enum):
+class ImbalanceStatus(StrEnum):
     OK = "OK"
     EXCES = "EXCES"
     DEFICIT = "DEFICIT"
 
 
-class MealStatus(str, Enum):
+class MealStatus(StrEnum):
     EQUILIBRE = "EQUILIBRE"
     DESEQUILIBRE = "DESEQUILIBRE"
 
