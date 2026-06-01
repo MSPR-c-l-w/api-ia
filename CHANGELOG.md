@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.1.4 (2026-06-01)
+
+### Bug Fixes
+
+- **docker**: Apt-get upgrade to patch libgnutls30 CVE-2026-33845 / CVE-2026-42010
+  ([`e7762cc`](https://github.com/MSPR-c-l-w/api-ia/commit/e7762cc8b8785aff8037c111fed1be112b666131))
+
+
 ## v0.1.3 (2026-06-01)
 
 ### Bug Fixes
