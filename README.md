@@ -47,7 +47,25 @@ Variables minimales requises :
 | `BACKEND_API_KEY` | `votre-clé-secrète` | Clé partagée avec le backend NestJS |
 | `PORT` | `8000` | Port HTTP |
 
-### 2. Lancer avec Docker Compose (recommandé)
+### 2. Lancer avec une seule commande
+
+MongoDB est **intégré dans l'image** — aucun service externe requis.
+
+```bash
+docker run -d \
+  --name healthai-api \
+  -p 8000:8000 \
+  -v healthai_data:/data/db \
+  -e ENVIRONMENT=production \
+  -e BACKEND_API_KEY="votre-clé-secrète" \
+  <DOCKERHUB_USERNAME>/api-ia:latest
+```
+
+Le volume `-v healthai_data:/data/db` garantit la **persistance des données** MongoDB entre les redémarrages.
+
+API disponible sur : **http://localhost:8000**
+
+### 3. Lancer avec Docker Compose (optionnel)
 
 Créer un `docker-compose.yml` :
 
@@ -59,30 +77,10 @@ services:
       - "${PORT:-8000}:8000"
     environment:
       ENVIRONMENT: production
-      MONGODB_URI: mongodb://mongo:27017/healthai_coach
       BACKEND_API_KEY: ${BACKEND_API_KEY}
-      PORT: 8000
-    depends_on:
-      mongo:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-
-  mongo:
-    image: mongo:7
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
 
 volumes:
   mongo_data:
@@ -92,16 +90,16 @@ volumes:
 docker compose up -d
 ```
 
-API disponible sur : **http://localhost:8000**
+### 4. Utiliser un MongoDB externe (optionnel)
 
-### 3. Lancer uniquement l'API (MongoDB existant)
+Si tu as déjà un MongoDB, surcharge simplement `MONGODB_URI` :
 
 ```bash
 docker run -d \
   --name healthai-api \
   -p 8000:8000 \
   -e ENVIRONMENT=production \
-  -e MONGODB_URI="mongodb://host.docker.internal:27017/healthai_coach" \
+  -e MONGODB_URI="mongodb://mon-serveur:27017/healthai_coach" \
   -e BACKEND_API_KEY="votre-clé-secrète" \
   <DOCKERHUB_USERNAME>/api-ia:latest
 ```
