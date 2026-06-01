@@ -100,24 +100,6 @@ docker compose up -d
 
 ---
 
-### Option C — MongoDB externe (si tu as déjà un serveur MongoDB)
-
-Ajoute simplement `MONGODB_URI` pour pointer vers ton MongoDB existant.
-L'instance MongoDB interne de l'image sera alors ignorée.
-
-```bash
-docker run -d \
-  --name healthai-api \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  -e ENVIRONMENT=production \
-  -e MONGODB_URI="mongodb://mon-serveur:27017/healthai_coach" \
-  -e BACKEND_API_KEY="votre-clé-secrète" \
-  <DOCKERHUB_USERNAME>/api-ia:latest
-```
-
----
-
 ### Vérifier que le service est opérationnel
 
 ```bash
@@ -187,7 +169,6 @@ python run.py
 | Variable | Défaut image | Obligatoire | Description |
 |---|---|---|---|
 | `BACKEND_API_KEY` | — | **Oui** | Clé partagée avec le backend NestJS — header `X-API-Key` sur `/recommendations/*` |
-| `MONGODB_URI` | `mongodb://localhost:27017/healthai_coach` | Non | URI MongoDB. Par défaut pointe sur le MongoDB **intégré** dans l'image. Surcharger uniquement si tu utilises un MongoDB externe. |
 | `ENVIRONMENT` | `development` | Non | `development` \| `test` \| `production` — en `production`, `/docs` (Swagger) est désactivé |
 | `PORT` | `8000` | Non | Port HTTP du serveur |
 | `SECRET_KEY` | — | Non | Clé interne (réservée pour évolutions futures) |
