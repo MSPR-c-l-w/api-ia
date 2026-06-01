@@ -1,6 +1,50 @@
+# Version control
+.git
+.gitignore
+
+# Secrets — never in the image
+.env
+.env.*
+!.env.example
+
+# Python artifacts
 .venv
 __pycache__
-.pytest_cache
-.env
-.git
 *.pyc
+*.pyo
+*.pyd
+*.egg-info
+dist/
+build/
+
+# Test & dev tooling
+tests/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# CI/CD & tooling
+.github/
+.pre-commit-config.yaml
+Makefile
+
+# Documentation (not needed in image)
+docs/
+*.md
+CHANGELOG.md
+AGENTS.md
+GUIDE.md
+
+# Dev configs
+pyproject.toml
+requirements-dev.txt
+
+# Editor
+.cursor/
+.idea/
+.vscode/
+*.swp
+*.swo

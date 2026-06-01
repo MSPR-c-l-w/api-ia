@@ -10,21 +10,23 @@ Algorithme :
 Score d'un repas = 1 − mean(|deviation_i / target_i|) ∈ [0, 1]
 Plus le score est proche de 1, plus les macros du repas sont proches des cibles.
 """
+
 from __future__ import annotations
 
 import random
+import re as _re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from app.contexts.nutrition.domain.models import HealthProfile, Macros
 
 
-class FoodCategory(str, Enum):
-    PROTEIN = "protein"       # viandes, poissons, œufs, légumineuses
-    CARB = "carb"             # céréales, pâtes, riz, pain
-    VEGETABLE = "vegetable"   # légumes (<80 kcal/portion, fibres élevées)
-    BREAKFAST = "breakfast"   # spécifiques petit-déj (avoine, yaourt, fruits…)
-    MIXED = "mixed"           # autre / équilibré
+class FoodCategory(StrEnum):
+    PROTEIN = "protein"  # viandes, poissons, œufs, légumineuses
+    CARB = "carb"  # céréales, pâtes, riz, pain
+    VEGETABLE = "vegetable"  # légumes (<80 kcal/portion, fibres élevées)
+    BREAKFAST = "breakfast"  # spécifiques petit-déj (avoine, yaourt, fruits…)
+    MIXED = "mixed"  # autre / équilibré
 
 
 @dataclass
@@ -38,7 +40,7 @@ class FoodItem:
 class ComposedMeal:
     foods: list[str]
     macros: Macros
-    score: float                  # 0-1, 1 = cible parfaite
+    score: float  # 0-1, 1 = cible parfaite
     deviation_pcts: dict[str, float] = field(default_factory=dict)
 
 
@@ -46,40 +48,110 @@ class ComposedMeal:
 # Classifieur d'aliments
 # ---------------------------------------------------------------------------
 
-import re as _re
-
 _BREAKFAST_KEYWORDS = {
     # Céréales / féculents matin
-    "avoine", "porridge", "granola", "muesli", "müsli", "cereal",
-    "flocon", "corn flakes", "weetabix",
+    "avoine",
+    "porridge",
+    "granola",
+    "muesli",
+    "müsli",
+    "cereal",
+    "flocon",
+    "corn flakes",
+    "weetabix",
     # Produits laitiers / œufs
-    "yaourt", "yogurt", "skyr", "fromage blanc", "kéfir",
-    "œuf", "omelette", "egg",
+    "yaourt",
+    "yogurt",
+    "skyr",
+    "fromage blanc",
+    "kéfir",
+    "œuf",
+    "omelette",
+    "egg",
     # Viennoiseries / pains sucrés
-    "pancake", "crêpe", "toast", "tartine", "bagel", "brioche",
-    "muffin", "scone", "gaufre", "waffle",
+    "pancake",
+    "crêpe",
+    "toast",
+    "tartine",
+    "bagel",
+    "brioche",
+    "muffin",
+    "scone",
+    "gaufre",
+    "waffle",
     # Fruits (consommés le matin)
-    "smoothie", "bowl", "fruit",
-    "banane", "pomme", "fraise", "framboise", "myrtille", "mangue",
-    "orange", "pamplemousse", "melon", "pastèque", "kiwi",
-    "ananas", "poire", "pêche", "nectarine", "abricot",
+    "smoothie",
+    "bowl",
+    "fruit",
+    "banane",
+    "pomme",
+    "fraise",
+    "framboise",
+    "myrtille",
+    "mangue",
+    "orange",
+    "pamplemousse",
+    "melon",
+    "pastèque",
+    "kiwi",
+    "ananas",
+    "poire",
+    "pêche",
+    "nectarine",
+    "abricot",
     # Autres typiques matin
-    "confiture", "miel", "beurre de cacahuète", "beurre d'arachide",
-    "jus d'orange", "jus de fruit",
+    "confiture",
+    "miel",
+    "beurre de cacahuète",
+    "beurre d'arachide",
+    "jus d'orange",
+    "jus de fruit",
 }
 
 _VEGETABLE_KEYWORDS = {
-    "artichaut", "asperge", "aubergine", "brocoli", "carotte",
-    "champignon", "chou", "courgette", "épinard", "haricot vert",
-    "laitue", "poivron", "radis", "salade", "tomate", "concombre",
-    "ail", "oignon", "céleri", "fenouil", "petits pois",
+    "artichaut",
+    "asperge",
+    "aubergine",
+    "brocoli",
+    "carotte",
+    "champignon",
+    "chou",
+    "courgette",
+    "épinard",
+    "haricot vert",
+    "laitue",
+    "poivron",
+    "radis",
+    "salade",
+    "tomate",
+    "concombre",
+    "ail",
+    "oignon",
+    "céleri",
+    "fenouil",
+    "petits pois",
 }
 
 # Mots qui indiquent clairement un plat de déjeuner/dîner (pas petit-déj)
 _LUNCH_DINNER_KEYWORDS = {
-    "burger", "pizza", "pâte", "riz", "pasta", "sandwich",
-    "soupe", "ragoût", "curry", "sauté", "rôti", "grillé",
-    "fajita", "tacos", "burrito", "sushi", "ramen", "pho",
+    "burger",
+    "pizza",
+    "pâte",
+    "riz",
+    "pasta",
+    "sandwich",
+    "soupe",
+    "ragoût",
+    "curry",
+    "sauté",
+    "rôti",
+    "grillé",
+    "fajita",
+    "tacos",
+    "burrito",
+    "sushi",
+    "ramen",
+    "pho",
 }
 
 
@@ -104,18 +176,26 @@ def _classify(name: str, macros: Macros) -> FoodCategory:
         return FoodCategory.BREAKFAST
 
     # Légume : peu calorique + fibres ou mot-clé
-    if macros.calories < 80 and (macros.fibers_g > 1.5 or any(kw in name_l for kw in _VEGETABLE_KEYWORDS)):
+    if macros.calories < 80 and (
+        macros.fibers_g > 1.5 or any(kw in name_l for kw in _VEGETABLE_KEYWORDS)
+    ):
         return FoodCategory.VEGETABLE
 
     # Protéine dominante : ratio prot/cal > 0.12 et quantité absolue > 8g
-    if macros.calories > 0:
-        if macros.proteins_g / macros.calories > 0.12 and macros.proteins_g > 8:
-            return FoodCategory.PROTEIN
+    if (
+        macros.calories > 0
+        and macros.proteins_g / macros.calories > 0.12
+        and macros.proteins_g > 8
+    ):
+        return FoodCategory.PROTEIN
 
     # Glucide dominant : carbs > 20g et ratio carb/cal > 0.5
-    if macros.calories > 0:
-        if macros.carbs_g > 20 and macros.carbs_g * 4 / macros.calories > 0.5:
-            return FoodCategory.CARB
+    if (
+        macros.calories > 0
+        and macros.carbs_g > 20
+        and macros.carbs_g * 4 / macros.calories > 0.5
+    ):
+        return FoodCategory.CARB
 
     return FoodCategory.MIXED
 
@@ -281,26 +361,42 @@ class MealComposerService:
             day_used: list[str] = []  # aliments utilisés aujourd'hui
 
             breakfast = self._compose_slot(
-                allowed, ["breakfast", "carb"], breakfast_target,
-                n_foods=2, exclude=used_recent, day_offset=day,
+                allowed,
+                ["breakfast", "carb"],
+                breakfast_target,
+                n_foods=2,
+                exclude=used_recent,
+                day_offset=day,
             )
             day_used += [f.split(" ×")[0] for f in breakfast.foods]
 
             lunch = self._compose_slot(
-                allowed, ["protein", "carb", "vegetable", "mixed"], lunch_target,
-                n_foods=3, exclude=used_recent + day_used, day_offset=day,
+                allowed,
+                ["protein", "carb", "vegetable", "mixed"],
+                lunch_target,
+                n_foods=3,
+                exclude=used_recent + day_used,
+                day_offset=day,
             )
             day_used += [f.split(" ×")[0] for f in lunch.foods]
 
             dinner = self._compose_slot(
-                allowed, ["protein", "vegetable", "mixed", "carb"], dinner_target,
-                n_foods=3, exclude=used_recent + day_used, day_offset=day + 7,
+                allowed,
+                ["protein", "vegetable", "mixed", "carb"],
+                dinner_target,
+                n_foods=3,
+                exclude=used_recent + day_used,
+                day_offset=day + 7,
             )
             day_used += [f.split(" ×")[0] for f in dinner.foods]
 
             snack = self._compose_slot(
-                allowed, ["mixed", "vegetable", "breakfast"], snack_target,
-                n_foods=1, exclude=used_recent + day_used, day_offset=day + 14,
+                allowed,
+                ["mixed", "vegetable", "breakfast"],
+                snack_target,
+                n_foods=1,
+                exclude=used_recent + day_used,
+                day_offset=day + 14,
             )
             day_used += [f.split(" ×")[0] for f in snack.foods]
 
@@ -315,19 +411,19 @@ class MealComposerService:
                 + dinner.macros.calories
                 + snack.macros.calories
             )
-            avg_score = round(
-                (breakfast.score + lunch.score + dinner.score) / 3, 3
-            )
+            avg_score = round((breakfast.score + lunch.score + dinner.score) / 3, 3)
 
-            days.append({
-                "day": day,
-                "breakfast": ", ".join(breakfast.foods),
-                "lunch": ", ".join(lunch.foods),
-                "dinner": ", ".join(dinner.foods),
-                "snack": snack.foods[0] if snack.foods else None,
-                "estimatedCalories": total_cal,
-                "score": avg_score,
-            })
+            days.append(
+                {
+                    "day": day,
+                    "breakfast": ", ".join(breakfast.foods),
+                    "lunch": ", ".join(lunch.foods),
+                    "dinner": ", ".join(dinner.foods),
+                    "snack": snack.foods[0] if snack.foods else None,
+                    "estimatedCalories": total_cal,
+                    "score": avg_score,
+                }
+            )
 
         return days
 
@@ -345,7 +441,9 @@ class MealComposerService:
         combined = _combine_macros(items)
         target = self._meal_target(profile, slot)
         score, devs = _score_meal(combined, target)
-        return ComposedMeal(foods=food_names, macros=combined, score=score, deviation_pcts=devs)
+        return ComposedMeal(
+            foods=food_names, macros=combined, score=score, deviation_pcts=devs
+        )
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -367,7 +465,9 @@ class MealComposerService:
                 fats_g=fat,
                 fibers_g=fiber,
             )
-            items.append(FoodItem(name=name, macros=macros, category=_classify(name, macros)))
+            items.append(
+                FoodItem(name=name, macros=macros, category=_classify(name, macros))
+            )
         return items
 
     @staticmethod
@@ -387,12 +487,39 @@ class MealComposerService:
         allergies: set[str],
     ) -> list[FoodItem]:
         """Retire les aliments incompatibles avec les contraintes."""
-        _MEAT_KEYWORDS = {"poulet", "bœuf", "porc", "agneau", "veau", "canard",
-                          "dinde", "jambon", "saucisse", "bacon", "steak", "bifteck",
-                          "côtelette", "filet", "rôti", "viande"}
-        _FISH_KEYWORDS = {"saumon", "thon", "cabillaud", "dorade", "crevette",
-                          "homard", "moule", "huître", "maquereau", "sardine",
-                          "anchois", "fruits de mer", "poisson"}
+        _meat_keywords = {
+            "poulet",
+            "bœuf",
+            "porc",
+            "agneau",
+            "veau",
+            "canard",
+            "dinde",
+            "jambon",
+            "saucisse",
+            "bacon",
+            "steak",
+            "bifteck",
+            "côtelette",
+            "filet",
+            "rôti",
+            "viande",
+        }
+        _fish_keywords = {
+            "saumon",
+            "thon",
+            "cabillaud",
+            "dorade",
+            "crevette",
+            "homard",
+            "moule",
+            "huître",
+            "maquereau",
+            "sardine",
+            "anchois",
+            "fruits de mer",
+            "poisson",
+        }
 
         is_vegetarian = "vegetarien" in constraints or "végétarien" in constraints
         is_vegan = "vegan" in constraints or "végétalien" in constraints
@@ -401,14 +528,25 @@ class MealComposerService:
         for item in self._items:
             name_l = item.name.lower()
 
-            if is_vegetarian or is_vegan:
-                if any(kw in name_l for kw in _MEAT_KEYWORDS | _FISH_KEYWORDS):
-                    continue
+            if (is_vegetarian or is_vegan) and any(
+                kw in name_l for kw in _meat_keywords | _fish_keywords
+            ):
+                continue
 
             if is_vegan:
-                _ANIMAL_KEYWORDS = {"fromage", "lait", "crème", "beurre", "yaourt",
-                                    "yogurt", "œuf", "egg", "miel", "honey"}
-                if any(kw in name_l for kw in _ANIMAL_KEYWORDS):
+                _animal_keywords = {
+                    "fromage",
+                    "lait",
+                    "crème",
+                    "beurre",
+                    "yaourt",
+                    "yogurt",
+                    "œuf",
+                    "egg",
+                    "miel",
+                    "honey",
+                }
+                if any(kw in name_l for kw in _animal_keywords):
                     continue
 
             if any(allergy in name_l for allergy in allergies):
@@ -439,14 +577,13 @@ class MealComposerService:
             except ValueError:
                 continue
             candidates = [
-                i for i in allowed
-                if i.category == cat and i.name not in used_names
+                i for i in allowed if i.category == cat and i.name not in used_names
             ]
             if candidates:
                 # Rotation déterministe par day_offset
                 start = day_offset % len(candidates)
                 rotated = candidates[start:] + candidates[:start]
-                pool.extend(rotated[:min(8, len(rotated))])
+                pool.extend(rotated[: min(8, len(rotated))])
             if len(pool) >= n_foods * 4:
                 break
 
@@ -465,7 +602,7 @@ class MealComposerService:
         best: ComposedMeal | None = None
 
         # Nombre de candidats de départ à tester (limité pour la perf)
-        starters = pool[:min(n_foods * 3, len(pool))]
+        starters = pool[: min(n_foods * 3, len(pool))]
 
         for starter in starters:
             selected = [starter]
@@ -479,8 +616,7 @@ class MealComposerService:
 
             for _ in range(n_foods - 1):
                 complement_pool = [
-                    i for i in pool
-                    if i.name not in {s.name for s in selected}
+                    i for i in pool if i.name not in {s.name for s in selected}
                 ]
                 if not complement_pool:
                     break
@@ -491,11 +627,22 @@ class MealComposerService:
                 )
                 selected.append(best_complement)
                 remaining_target = Macros(
-                    calories=max(0, remaining_target.calories - best_complement.macros.calories),
-                    proteins_g=max(0, remaining_target.proteins_g - best_complement.macros.proteins_g),
-                    carbs_g=max(0, remaining_target.carbs_g - best_complement.macros.carbs_g),
-                    fats_g=max(0, remaining_target.fats_g - best_complement.macros.fats_g),
-                    fibers_g=max(0, remaining_target.fibers_g - best_complement.macros.fibers_g),
+                    calories=max(
+                        0, remaining_target.calories - best_complement.macros.calories
+                    ),
+                    proteins_g=max(
+                        0,
+                        remaining_target.proteins_g - best_complement.macros.proteins_g,
+                    ),
+                    carbs_g=max(
+                        0, remaining_target.carbs_g - best_complement.macros.carbs_g
+                    ),
+                    fats_g=max(
+                        0, remaining_target.fats_g - best_complement.macros.fats_g
+                    ),
+                    fibers_g=max(
+                        0, remaining_target.fibers_g - best_complement.macros.fibers_g
+                    ),
                 )
 
             # Scale les portions pour atteindre la cible calorique

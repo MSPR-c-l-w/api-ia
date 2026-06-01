@@ -11,7 +11,9 @@ from app.presentation.exception_handlers import map_application_errors
 from app.presentation.http import model_response, parse_json
 
 nutrition_bp = Blueprint("nutrition", __name__, url_prefix="/ai/nutrition")
-nutrition_legacy_bp = Blueprint("nutrition_legacy", __name__, url_prefix="/api/nutrition")
+nutrition_legacy_bp = Blueprint(
+    "nutrition_legacy", __name__, url_prefix="/api/nutrition"
+)
 
 
 @nutrition_bp.post("/analyze")
@@ -19,7 +21,9 @@ nutrition_legacy_bp = Blueprint("nutrition_legacy", __name__, url_prefix="/api/n
 async def analyze_nutrition():
     """Analyse nutritionnelle (stub — intégration vision à venir)."""
     payload = parse_json(NutritionAnalysisRequest)
-    result: NutritionAnalysisResponse = await get_container().analyze_meal.execute(payload)
+    result: NutritionAnalysisResponse = await get_container().analyze_meal.execute(
+        payload
+    )
     return model_response(result)
 
 
@@ -37,5 +41,7 @@ async def generate_meal_plan():
 async def analyze_nutrition_legacy():
     """Alias historique `/api/nutrition/analyze` pour compatibilité."""
     payload = parse_json(NutritionAnalysisRequest)
-    result: NutritionAnalysisResponse = await get_container().analyze_meal.execute(payload)
+    result: NutritionAnalysisResponse = await get_container().analyze_meal.execute(
+        payload
+    )
     return model_response(result)

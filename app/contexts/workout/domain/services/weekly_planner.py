@@ -1,10 +1,18 @@
 """Planification hebdomadaire adaptative — EPIC #79 #96."""
 
-from app.contexts.workout.domain.entities.workout_program import PlannedExercise, ProgramDay
-from app.contexts.workout.domain.services.recommendation_engine import _level_index, score_exercise
-from app.contexts.workout.domain.value_objects.exercise_definition import ExerciseDefinition
-from app.contexts.workout.domain.value_objects.user_profile import UserProfileForScoring
 from app.contexts.workout.domain.data.exercises_catalog import EXERCISE_CATALOG
+from app.contexts.workout.domain.entities.workout_program import (
+    PlannedExercise,
+    ProgramDay,
+)
+from app.contexts.workout.domain.services.recommendation_engine import (
+    _level_index,
+    score_exercise,
+)
+from app.contexts.workout.domain.value_objects.exercise_definition import (
+    ExerciseDefinition,
+)
+from app.contexts.workout.domain.value_objects.user_profile import UserProfileForScoring
 
 WEEK_DAYS = [
     "lundi",
@@ -102,7 +110,12 @@ def _ranked_exercises(
     # Fallback: if all exercises were done recently, include them with rotation penalty
     if not ranked:
         scored_fallback = [
-            (ex, _score_with_rotation(ex, profile, recent_exercise_ids, exclude_recent=False))
+            (
+                ex,
+                _score_with_rotation(
+                    ex, profile, recent_exercise_ids, exclude_recent=False
+                ),
+            )
             for ex in EXERCISE_CATALOG
         ]
         ranked = sorted(

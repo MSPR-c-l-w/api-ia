@@ -3,8 +3,8 @@ from app.services.weekly_planner import (
     _session_duration_bounds,
     _spread_training_day_indices,
     _training_days_count,
-    generate_weekly_program,
     count_muscle_group_frequency,
+    generate_weekly_program,
 )
 
 
@@ -82,7 +82,9 @@ def test_rotation_deprioritizes_recent_exercises():
         limitations=[],
     )
     recent_ids = ["marche-rapide", "pont-fessier", "gainage"]
-    without = set(_exercise_ids(generate_weekly_program(profile, recent_exercise_ids=[])))
+    without = set(
+        _exercise_ids(generate_weekly_program(profile, recent_exercise_ids=[]))
+    )
     with_recent = set(
         _exercise_ids(generate_weekly_program(profile, recent_exercise_ids=recent_ids)),
     )

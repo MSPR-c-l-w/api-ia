@@ -10,17 +10,17 @@ from app.contexts.nutrition.domain.models import GOAL_PROFILES, HealthProfile
 
 # Activity multipliers (PAL — Physical Activity Level)
 _ACTIVITY_MULTIPLIERS: dict[str, float] = {
-    "sedentary": 1.2,           # desk job, no exercise
-    "lightly_active": 1.375,    # light exercise 1–3 days/week
+    "sedentary": 1.2,  # desk job, no exercise
+    "lightly_active": 1.375,  # light exercise 1–3 days/week
     "moderately_active": 1.55,  # moderate exercise 3–5 days/week
-    "very_active": 1.725,       # hard exercise 6–7 days/week
-    "extra_active": 1.9,        # physical job + hard exercise / athlete
+    "very_active": 1.725,  # hard exercise 6–7 days/week
+    "extra_active": 1.9,  # physical job + hard exercise / athlete
 }
 
 # Goal caloric adjustments (kcal/day relative to TDEE)
 _GOAL_ADJUSTMENTS: dict[str, float] = {
-    "perte_de_poids": -400.0,   # moderate deficit
-    "prise_de_masse": +350.0,   # lean bulk surplus
+    "perte_de_poids": -400.0,  # moderate deficit
+    "prise_de_masse": +350.0,  # lean bulk surplus
     "equilibre": 0.0,
 }
 
@@ -52,7 +52,9 @@ class TdeeCalculator:
         """
         if daily_calories_target:
             base = GOAL_PROFILES.get(goal) or HealthProfile()
-            return base.model_copy(update={"daily_calories_target": float(daily_calories_target)})
+            return base.model_copy(
+                update={"daily_calories_target": float(daily_calories_target)}
+            )
 
         if all(v is not None for v in (weight_kg, height_cm, age_years, gender)):
             return self.compute(

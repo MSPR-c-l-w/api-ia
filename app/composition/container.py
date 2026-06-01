@@ -1,5 +1,5 @@
-from functools import lru_cache
 import logging
+from functools import lru_cache
 
 import httpx
 
@@ -16,7 +16,9 @@ from app.contexts.nutrition.infrastructure.backend_nutrition_lookup import (
 )
 from app.contexts.nutrition.infrastructure.cache import AiCacheService
 from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
-from app.contexts.nutrition.infrastructure.nutrition_lookup import NutritionLookupService
+from app.contexts.nutrition.infrastructure.nutrition_lookup import (
+    NutritionLookupService,
+)
 from app.contexts.nutrition.infrastructure.vision.google_vision_provider import (
     GoogleVisionProvider,
 )
@@ -41,7 +43,9 @@ class Container:
         self._workout_feedbacks = MongoWorkoutFeedbackRepository()
         self._fitness_profiles = MongoFitnessProfileRepository()
 
-        self.create_workout_program = CreateWorkoutProgramUseCase(self._workout_programs)
+        self.create_workout_program = CreateWorkoutProgramUseCase(
+            self._workout_programs
+        )
         self.submit_workout_feedback = SubmitWorkoutFeedbackUseCase(
             self._workout_programs,
             self._workout_feedbacks,

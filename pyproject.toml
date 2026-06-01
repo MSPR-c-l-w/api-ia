@@ -1,0 +1,65 @@
+[project]
+name = "healthai-coach-api"
+version = "1.0.0"
+requires-python = ">=3.12"
+
+# ── Ruff ──────────────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [".venv", "__pycache__", "dist", "build"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = [
+    "E501",   # line too long — handled by formatter
+    "N999",   # invalid module name (app/__init__ re-exports)
+    "UP047",  # PEP 695 type-param syntax requires rewriting TypeVar callsites
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+# ── Coverage ──────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/__init__.py", "*/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 40
+
+# ── python-semantic-release ───────────────────────────────────────────────────
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+changelog_file = "CHANGELOG.md"
+tag_format = "v{version}"
+commit_message = "chore(release): v{version} [skip ci]"
+logging_use_named_masks = false
+allow_zero_version = true
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.remote]
+type = "github"
+token = { env = "GH_TOKEN" }
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = [
+    "build", "chore", "ci", "docs",
+    "feat", "fix", "perf", "refactor",
+    "style", "test",
+]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+
+[tool.semantic_release.publish]
+upload_to_vcs_release = true

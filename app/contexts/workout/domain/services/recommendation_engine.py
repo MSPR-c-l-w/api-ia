@@ -1,8 +1,13 @@
 """Moteur multi-critères de sélection d'exercices — EPIC #79 #95."""
 
-from app.contexts.workout.domain.value_objects.exercise_definition import ExerciseDefinition
+from app.contexts.workout.domain.data.exercises_catalog import (
+    EXERCISE_CATALOG,
+    LEVEL_ORDER,
+)
+from app.contexts.workout.domain.value_objects.exercise_definition import (
+    ExerciseDefinition,
+)
 from app.contexts.workout.domain.value_objects.user_profile import UserProfileForScoring
-from app.contexts.workout.domain.data.exercises_catalog import EXERCISE_CATALOG, LEVEL_ORDER
 
 WEIGHT_OBJECTIVE = 0.40
 WEIGHT_LEVEL = 0.25
@@ -38,7 +43,9 @@ def _level_index(level: str) -> int:
     return 0
 
 
-def _score_objective(exercise: ExerciseDefinition, profile: UserProfileForScoring) -> float:
+def _score_objective(
+    exercise: ExerciseDefinition, profile: UserProfileForScoring
+) -> float:
     objective = _normalize(profile.objectif)
     if not exercise.objectives:
         return 0.5
@@ -71,7 +78,9 @@ def _score_equipment_availability(
     return 0.0
 
 
-def _score_preferences(exercise: ExerciseDefinition, profile: UserProfileForScoring) -> float:
+def _score_preferences(
+    exercise: ExerciseDefinition, profile: UserProfileForScoring
+) -> float:
     if not profile.preferences:
         return 0.5
     exercise_tags = {_normalize(t) for t in exercise.tags}
@@ -98,9 +107,7 @@ def _score_limitations_soft(
 def _blocked_exercise_ids(limitations: list[str]) -> set[str]:
     prefix = "exercice_problematique:"
     return {
-        item.removeprefix(prefix)
-        for item in limitations
-        if item.startswith(prefix)
+        item.removeprefix(prefix) for item in limitations if item.startswith(prefix)
     }
 
 
@@ -113,9 +120,7 @@ def is_exercise_compatible(
         return False
     if _score_limitations_soft(exercise, profile) == 0.0:
         return False
-    if _score_equipment_availability(exercise, profile) == 0.0:
-        return False
-    return True
+    return _score_equipment_availability(exercise, profile) != 0.0
 
 
 def score_exercise(
@@ -125,7 +130,7 @@ def score_exercise(
     """
     Score entre 0 et 1 selon objectif (40 %), niveau (25 %), matériel (20 %),
     préférences (10 %), limitations (5 %).
-  """
+    """
     if not is_exercise_compatible(exercise, user_profile):
         return 0.0
 

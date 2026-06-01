@@ -67,7 +67,9 @@ class AiCacheService:
 
     def llm_key(self, goal: str, imbalance_tokens: list[str]) -> str:
         """Stable key for an LLM suggestion request."""
-        return self._hash_key("llm", {"goal": goal, "imbalances": sorted(imbalance_tokens)})
+        return self._hash_key(
+            "llm", {"goal": goal, "imbalances": sorted(imbalance_tokens)}
+        )
 
     # ------------------------------------------------------------------
     # Observability

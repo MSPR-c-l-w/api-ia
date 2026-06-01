@@ -1,14 +1,181 @@
-# HealthAI Coach API (api-ia)
+# HealthAI Coach API (`api-ia`)
 
-Micro-service **Flask** + **MongoDB** (Motor) pour l'analyse nutritionnelle et les recommandations sportives IA.
+Microservice **Flask** + **MongoDB** (Motor) pour l'analyse nutritionnelle et les recommandations sportives IA.
 
-Partie de l'[EPIC #79](https://github.com/MSPR-c-l-w/backend/issues/79) (issues suivies sur le dépôt `backend`).
+Partie de l'[EPIC #79](https://github.com/MSPR-c-l-w/backend/issues/79).
+
+---
+
+## Table des matières
+
+- [Prérequis](#prérequis)
+- [Démarrage rapide — Docker Hub](#démarrage-rapide--docker-hub)
+- [Démarrage local (développement)](#démarrage-local-développement)
+- [Variables d'environnement](#variables-denvironnement)
+- [Structure](#structure-clean-architecture)
+- [Endpoints](#endpoints)
+- [Tests](#tests)
+- [CI/CD](#cicd)
+- [Contribution](#contribution)
+
+---
 
 ## Prérequis
 
-- **Python 3.12+**
-- **MongoDB 7** (local ou via Docker)
-- Clé API partagée avec le backend NestJS (`BACKEND_API_KEY` = `WORKOUT_SERVICE_API_KEY`)
+- **Docker 24+** — c'est tout. MongoDB est **inclus dans l'image**, aucune installation supplémentaire n'est nécessaire.
+- **Python 3.12+** uniquement si tu travailles sur le code source (développement local).
+
+---
+
+## Démarrage rapide — Docker Hub
+
+> MongoDB est embarqué dans l'image. Un seul conteneur suffit pour faire tourner le service complet.
+
+L'image est publiée automatiquement sur Docker Hub à chaque merge sur `main` :
+`<DOCKERHUB_USERNAME>/api-ia`
+
+Remplace `<DOCKERHUB_USERNAME>` par le nom d'utilisateur Docker Hub du projet.
+
+---
+
+### Option A — `docker run` (la plus simple)
+
+```bash
+docker run -d \
+  --name healthai-api \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  -v healthai_data:/data/db \
+  -e ENVIRONMENT=production \
+  -e BACKEND_API_KEY="votre-clé-secrète" \
+  <DOCKERHUB_USERNAME>/api-ia:latest
+```
+
+**Ce que fait chaque flag :**
+
+| Flag | Rôle |
+|---|---|
+| `--restart unless-stopped` | Redémarre automatiquement après un crash ou reboot serveur |
+| `-p 8000:8000` | Expose l'API sur le port 8000 de la machine hôte |
+| `-v healthai_data:/data/db` | **Obligatoire** — persiste les données MongoDB entre les redémarrages |
+| `-e ENVIRONMENT=production` | Désactive `/docs` (Swagger) en production |
+| `-e BACKEND_API_KEY=...` | Clé secrète partagée avec le backend NestJS pour les routes `/recommendations/*` |
+
+> **`BACKEND_API_KEY`** est la seule variable obligatoire. Elle doit correspondre à `WORKOUT_SERVICE_API_KEY` côté backend NestJS.
+
+---
+
+### Option B — Docker Compose
+
+Crée un fichier `docker-compose.yml` sur ton serveur :
+
+```yaml
+services:
+  api:
+    image: <DOCKERHUB_USERNAME>/api-ia:latest
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: production
+      BACKEND_API_KEY: ${BACKEND_API_KEY}   # défini dans un fichier .env local
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+```
+
+Puis crée un fichier `.env` à côté :
+
+```env
+BACKEND_API_KEY=votre-clé-secrète
+```
+
+Lance le service :
+
+```bash
+docker compose up -d
+```
+
+---
+
+### Vérifier que le service est opérationnel
+
+```bash
+# Attendre ~15s le temps que MongoDB démarre (premier lancement)
+curl http://localhost:8000/health
+# → {"status": "ok", "timestamp": "..."}
+```
+
+> Au **premier démarrage**, MongoDB initialise ses fichiers de données — prévoir 10–20 secondes avant que le service réponde. Les démarrages suivants sont immédiats.
+
+---
+
+### Choisir le bon tag
+
+| Tag | À utiliser quand… |
+|---|---|
+| `latest` | Tu veux toujours la dernière version stable |
+| `v1.2.3` | Tu veux épingler une version précise (recommandé en production) |
+| `v1.2` | Tu suis les patchs du minor `1.2` automatiquement |
+| `sha-abc1234` | Tu veux une image traçable liée à un commit exact |
+
+```bash
+# Exemple avec version épinglée
+docker run -d ... <DOCKERHUB_USERNAME>/api-ia:v1.0.0
+```
+
+---
+
+## Démarrage local (développement)
+
+### Installation
+
+```bash
+python -m venv .venv
+source .venv/bin/activate          # Windows : .venv\Scripts\activate
+pip install -r requirements-dev.txt
+cp .env.example .env
+```
+
+### Installer les hooks git (équivalent Husky)
+
+```bash
+make setup-hooks
+# ou manuellement :
+pre-commit install --hook-type pre-commit
+pre-commit install --hook-type pre-push
+```
+
+Les hooks activés :
+- **pre-commit** : lint ruff, format ruff, vérifications YAML/JSON, protection de clés privées, blocage des commits directs sur `main`
+- **pre-push** : exécution des tests unitaires
+
+### Lancer l'API
+
+```bash
+# Via Docker Compose (avec MongoDB intégré)
+make docker-run
+
+# Ou directement
+python run.py
+```
+
+---
+
+## Variables d'environnement
+
+| Variable | Défaut image | Obligatoire | Description |
+|---|---|---|---|
+| `BACKEND_API_KEY` | — | **Oui** | Clé partagée avec le backend NestJS — header `X-API-Key` sur `/recommendations/*` |
+| `ENVIRONMENT` | `development` | Non | `development` \| `test` \| `production` — en `production`, `/docs` (Swagger) est désactivé |
+| `PORT` | `8000` | Non | Port HTTP du serveur |
+| `SECRET_KEY` | — | Non | Clé interne (réservée pour évolutions futures) |
+
+Pour le développement local, copier `.env.example` vers `.env`.
+
+---
 
 ## Structure (clean architecture)
 
@@ -21,88 +188,88 @@ app/
   composition/        # Container (injection de dépendances)
   routers/            # Blueprints Flask
   main.py
+tests/                # pytest — unit / integration / e2e
+.github/workflows/    # CI/CD pipelines
 docs/
-  architecture.md
-  mspr-contexte.md
-  mongodb-schema.md
-AGENTS.md             # Guide agents IA
-openapi.json
-tests/
 ```
 
-Voir [docs/architecture.md](docs/architecture.md) et [AGENTS.md](AGENTS.md).
-
-## Variables d'environnement
-
-| Variable | Description |
-|----------|-------------|
-| `MONGODB_URI` | URI MongoDB (ex. `mongodb://localhost:27017/healthai_coach`) |
-| `BACKEND_API_KEY` | Clé partagée avec le backend NestJS — header `X-API-Key` sur `/recommendations/*` |
-| `PORT` | Port HTTP (défaut `8000`) |
-| `ENVIRONMENT` | `development` \| `test` \| `production` — en `production`, `/docs` est désactivé |
-| `SECRET_KEY` | Clé interne (réservée évolutions futures) |
-
-Copier `.env.example` vers `.env`.
-
-## Démarrage local
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate   # Linux/macOS : source .venv/bin/activate
-pip install -r requirements.txt
-python run.py
-```
-
-API : http://127.0.0.1:8000
-
-## Docker
-
-```bash
-docker compose up --build
-```
-
-Services : API (`8000`) + MongoDB (`27017`).
+---
 
 ## Endpoints
 
 | Méthode | Chemin | Auth | Description |
-|---------|--------|------|-------------|
+|---|---|---|---|
 | `GET` | `/health` | — | Santé du service |
-| `POST` | `/api/nutrition/analyze` | — | Analyse nutrition (stub) |
+| `POST` | `/api/nutrition/analyze` | — | Analyse nutrition |
 | `POST` | `/recommendations/workout` | `X-API-Key` | Programme hebdomadaire |
 | `POST` | `/recommendations/workout/{id}/feedback` | `X-API-Key` | Retour utilisateur |
 
-## OpenAPI
+**Swagger UI** (hors production) : http://localhost:8000/docs
 
-- **Swagger UI** (développement) : http://127.0.0.1:8000/docs — ajouter le header `X-API-Key` dans l'UI pour tester `/recommendations/*`
-- **JSON live** : http://127.0.0.1:8000/openapi.json
-- **Export versionné** :
-
-```bash
-python scripts/export_openapi.py
-```
-
-Génère `openapi.json` à la racine (à committer après modification des routes ou schémas).
+---
 
 ## Tests
 
 ```bash
-pytest
+make test-unit          # Tests unitaires + rapport de couverture
+make test-integration   # Tests d'intégration (nécessite MongoDB)
+make test-e2e           # Tests end-to-end
+make test               # Tout sauf e2e
 ```
 
-`ENVIRONMENT=test` désactive la connexion MongoDB au démarrage (voir `tests/conftest.py`).
+Marqueurs pytest :
 
-## Schéma MongoDB
+| Marker | Description |
+|---|---|
+| `@pytest.mark.unit` | Aucun service externe requis |
+| `@pytest.mark.integration` | Nécessite MongoDB actif |
+| `@pytest.mark.e2e` | Nécessite le stack complet |
 
-Voir [docs/mongodb-schema.md](docs/mongodb-schema.md).
+---
 
-```bash
-python scripts/seed_mongodb.py
-```
+## CI/CD
 
-## Intégration backend (#99)
+### Pipelines CI (`.github/workflows/`)
 
-Le backend NestJS appelle ce service via `WORKOUT_SERVICE_URL` + `WORKOUT_SERVICE_API_KEY` :
+| Fichier | Déclencheur | Description |
+|---|---|---|
+| `ci-quality.yml` | Tout push / PR | Lint (ruff) + vérification du format |
+| `ci-unit-tests.yml` | Tout push / PR | Tests unitaires + rapport coverage |
+| `ci-integration-tests.yml` | Tout push / PR | Tests d'intégration (service MongoDB) |
+| `ci-e2e.yml` | PR avec label **`e2e`** | Tests end-to-end (stack complet) |
 
-- `POST {WORKOUT_SERVICE_URL}/recommendations/workout`
-- Référence SQL : `AiWorkoutRecommendation.microservice_ref_id` = `programId` MongoDB
+### Pipelines CD
+
+| Fichier | Déclencheur | Description |
+|---|---|---|
+| `cd-docker.yml` | Push sur `main` ou tag `v*.*.*` | Scan Trivy → build multi-platform → push Docker Hub |
+| `cd-release.yml` | Push sur `main` | Semantic release (CHANGELOG + tag + GitHub Release) |
+
+### Secrets GitHub requis
+
+| Secret | Description |
+|---|---|
+| `DOCKERHUB_USERNAME` | Nom d'utilisateur Docker Hub |
+| `DOCKERHUB_TOKEN` | Access token Docker Hub (lecture/écriture) |
+| `GH_PAT` | Personal Access Token GitHub (optionnel — permet de déclencher d'autres workflows depuis la release) |
+| `CODECOV_TOKEN` | Token Codecov (optionnel) |
+
+### Conventional Commits (pour les releases)
+
+Le versioning sémantique est basé sur les messages de commit :
+
+| Préfixe | Bump |
+|---|---|
+| `feat:` | Minor (1.**X**.0) |
+| `fix:`, `perf:` | Patch (1.0.**X**) |
+| `BREAKING CHANGE` | Major (**X**.0.0) |
+
+---
+
+## Contribution
+
+1. Forker / créer une branche depuis `main`
+2. Installer les hooks : `make setup-hooks`
+3. Commiter avec des messages [Conventional Commits](https://www.conventionalcommits.org/)
+4. Ouvrir une PR — les pipelines CI se déclenchent automatiquement
+5. Ajouter le label `e2e` sur la PR pour activer les tests end-to-end

@@ -17,10 +17,9 @@ import httpx
 
 from app.contexts.nutrition.domain.models import Macros
 from app.contexts.nutrition.infrastructure.nutrition_lookup import (
+    _DEFAULT,
     DEFAULT_SERVING_G,
     NutritionLookupService,
-    _DEFAULT,
-    _NON_FOOD_TOKENS,
 )
 
 logger = logging.getLogger(__name__)
@@ -141,12 +140,16 @@ class BackendNutritionLookupService:
 
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             # First request to get total count
-            resp = await client.get(url, params={"page": 1, "limit": 1}, headers=headers)
+            resp = await client.get(
+                url, params={"page": 1, "limit": 1}, headers=headers
+            )
             resp.raise_for_status()
             total: int = resp.json().get("total", 0)
 
             if total == 0:
-                logger.warning("BackendNutritionLookup: aucun item en base, fallback statique.")
+                logger.warning(
+                    "BackendNutritionLookup: aucun item en base, fallback statique."
+                )
                 return
 
             # Fetch all items page by page (backend max limit = 100)
@@ -179,10 +182,10 @@ class BackendNutritionLookupService:
 
         self._table = new_table
         self._compiled_patterns = {
-            key: re.compile(r"\b" + re.escape(key) + r"\b")
-            for key in new_table
+            key: re.compile(r"\b" + re.escape(key) + r"\b") for key in new_table
         }
         self._loaded_at = time.time()
         logger.info(
-            "BackendNutritionLookup: %d aliments chargés depuis le backend.", len(new_table)
+            "BackendNutritionLookup: %d aliments chargés depuis le backend.",
+            len(new_table),
         )

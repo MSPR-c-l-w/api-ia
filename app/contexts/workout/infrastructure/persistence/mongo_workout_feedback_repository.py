@@ -17,7 +17,9 @@ class MongoWorkoutFeedbackRepository(WorkoutFeedbackRepository):
         )
         return str(result.inserted_id)
 
-    async def count_recent_trop_facile(self, user_id: int, *, window_days: int = 30) -> int:
+    async def count_recent_trop_facile(
+        self, user_id: int, *, window_days: int = 30
+    ) -> int:
         if settings.skip_mongodb_on_startup:
             return 0
 

@@ -25,15 +25,22 @@ def _macros(cal=200.0, prot=20.0, carbs=25.0, fats=8.0, fibers=3.0) -> Macros:
 # compute_lookup_metrics
 # ---------------------------------------------------------------------------
 
+
 def test_lookup_metrics_returns_all_nutrients():
     samples = [(_macros(), _macros())]
     result = compute_lookup_metrics(samples)
-    assert set(result.keys()) == {"calories", "proteins_g", "carbs_g", "fats_g", "fibers_g"}
+    assert set(result.keys()) == {
+        "calories",
+        "proteins_g",
+        "carbs_g",
+        "fats_g",
+        "fibers_g",
+    }
 
 
 def test_lookup_metrics_keys_per_nutrient():
     samples = [(_macros(), _macros())]
-    for nutrient, metrics in compute_lookup_metrics(samples).items():
+    for _nutrient, metrics in compute_lookup_metrics(samples).items():
         assert set(metrics.keys()) == {"mse", "rmse", "rss", "tss", "r2", "n_samples"}
 
 
@@ -77,19 +84,32 @@ def test_lookup_empty_raises():
 # compute_imbalance_metrics
 # ---------------------------------------------------------------------------
 
+
 def test_imbalance_metrics_returns_all_nutrients():
     profile = HealthProfile()
     meals = [(_macros(), profile)]
     result = compute_imbalance_metrics(meals)
-    assert set(result.keys()) == {"calories", "proteins_g", "carbs_g", "fats_g", "fibers_g"}
+    assert set(result.keys()) == {
+        "calories",
+        "proteins_g",
+        "carbs_g",
+        "fats_g",
+        "fibers_g",
+    }
 
 
 def test_imbalance_metrics_keys_per_nutrient():
     profile = HealthProfile()
     meals = [(_macros(), profile)]
-    for nutrient, metrics in compute_imbalance_metrics(meals).items():
+    for _nutrient, metrics in compute_imbalance_metrics(meals).items():
         assert set(metrics.keys()) == {
-            "mse", "rmse", "rss", "tss", "r2", "mean_deviation_pct", "n_samples"
+            "mse",
+            "rmse",
+            "rss",
+            "tss",
+            "r2",
+            "mean_deviation_pct",
+            "n_samples",
         }
 
 
@@ -136,6 +156,7 @@ def test_imbalance_empty_raises():
 # ---------------------------------------------------------------------------
 # Integration : backend lookup → metrics réelles
 # ---------------------------------------------------------------------------
+
 
 def test_backend_lookup_metrics_with_real_data():
     """Test d'intégration : charge quelques aliments du backend et calcule les métriques."""

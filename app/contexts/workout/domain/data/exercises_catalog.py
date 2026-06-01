@@ -5,7 +5,9 @@ contain no infrastructure concerns. They belong in the domain layer so that
 domain services and use cases can reference them without importing infrastructure.
 """
 
-from app.contexts.workout.domain.value_objects.exercise_definition import ExerciseDefinition
+from app.contexts.workout.domain.value_objects.exercise_definition import (
+    ExerciseDefinition,
+)
 
 LEVEL_ORDER: list[str] = ["debutant", "intermediaire", "avance", "athlete"]
 

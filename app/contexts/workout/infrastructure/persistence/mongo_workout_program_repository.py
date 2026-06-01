@@ -7,7 +7,10 @@ from bson.errors import InvalidId
 from app.config import settings
 from app.contexts.workout.domain.entities.workout_program import WorkoutProgram
 from app.contexts.workout.domain.repositories.protocols import WorkoutProgramRepository
-from app.shared.application.exceptions import MongoUnavailableError, ProgramNotFoundError
+from app.shared.application.exceptions import (
+    MongoUnavailableError,
+    ProgramNotFoundError,
+)
 from app.shared.infrastructure import collections as col
 from app.shared.infrastructure import database
 
@@ -41,7 +44,9 @@ class MongoWorkoutProgramRepository(WorkoutProgramRepository):
         db = database.get_database()
         return await db[col.WORKOUT_PROGRAMS].find_one({"_id": oid})
 
-    async def get_recent_exercise_ids(self, user_id: int, *, weeks: int = 2) -> list[str]:
+    async def get_recent_exercise_ids(
+        self, user_id: int, *, weeks: int = 2
+    ) -> list[str]:
         if settings.skip_mongodb_on_startup:
             return []
 

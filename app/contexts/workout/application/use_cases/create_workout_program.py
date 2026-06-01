@@ -27,7 +27,9 @@ class CreateWorkoutProgramUseCase:
     def __init__(self, program_repository: WorkoutProgramRepository) -> None:
         self._programs = program_repository
 
-    def _validate_profile(self, payload: WorkoutProgramRequest) -> UserProfileForScoring:
+    def _validate_profile(
+        self, payload: WorkoutProgramRequest
+    ) -> UserProfileForScoring:
         if not payload.objectif.strip() or not payload.niveau.strip():
             raise InsufficientUserDataError()
         return UserProfileForScoring(

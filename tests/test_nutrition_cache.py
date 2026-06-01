@@ -9,7 +9,6 @@ from app.contexts.nutrition.infrastructure.nutrition_lookup import (
     is_food_label,
 )
 
-
 # ---------------------------------------------------------------------------
 # Cache tests
 # ---------------------------------------------------------------------------

@@ -96,7 +96,8 @@ class GenerateMealPlanUseCase:
                 height_cm=payload.height_cm,
                 age_years=payload.age_years,
                 gender=payload.gender,
-                physical_activity_level=payload.physical_activity_level or "moderately_active",
+                physical_activity_level=payload.physical_activity_level
+                or "moderately_active",
                 daily_calories_target=payload.daily_calories_target,
             ).daily_calories_target
         )
@@ -167,7 +168,8 @@ class GenerateMealPlanUseCase:
             height_cm=payload.height_cm,
             age_years=payload.age_years,
             gender=payload.gender,
-            physical_activity_level=payload.physical_activity_level or "moderately_active",
+            physical_activity_level=payload.physical_activity_level
+            or "moderately_active",
             daily_calories_target=payload.daily_calories_target,
         )
 
@@ -208,5 +210,3 @@ class GenerateMealPlanUseCase:
             )
             for day in range(1, 8)
         ]
-
-

@@ -51,7 +51,9 @@ class BackendAuthService:
         data = resp.json()
         token = data.get("access_token") or data.get("accessToken", "")
         if not token:
-            raise RuntimeError(f"BackendAuthService: pas de token dans la réponse: {data}")
+            raise RuntimeError(
+                f"BackendAuthService: pas de token dans la réponse: {data}"
+            )
         self._token = token
         # JWT expire en ~900s (15 min) par défaut — on suppose 14 min pour la marge
         self._expires_at = time.time() + 840

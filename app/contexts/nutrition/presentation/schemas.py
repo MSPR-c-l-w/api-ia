@@ -18,7 +18,9 @@ class NutrientDetailSchema(BaseModel):
 
     name: str = Field(description="Nom du nutriment")
     actual: float = Field(description="Valeur mesurée pour ce repas")
-    target: float = Field(description="Cible pour ce repas (1/3 de la cible journalière)")
+    target: float = Field(
+        description="Cible pour ce repas (1/3 de la cible journalière)"
+    )
     unit: str = Field(description="Unité (kcal ou g)")
     status: str = Field(description="OK | EXCES | DEFICIT")
     deviation_pct: float = Field(description="Écart par rapport à la cible en %")
@@ -88,7 +90,13 @@ class NutritionAnalysisRequest(BaseModel):
         default=None,
         alias="physicalActivityLevel",
         description="Niveau d'activité physique (HealthProfile.physical_activity_level)",
-        examples=["sedentary", "lightly_active", "moderately_active", "very_active", "extra_active"],
+        examples=[
+            "sedentary",
+            "lightly_active",
+            "moderately_active",
+            "very_active",
+            "extra_active",
+        ],
     )
     daily_calories_target: int | None = Field(
         default=None,
@@ -222,7 +230,13 @@ class MealPlanRequest(BaseModel):
         default=None,
         alias="physicalActivityLevel",
         description="Niveau d'activité physique (HealthProfile.physical_activity_level)",
-        examples=["sedentary", "lightly_active", "moderately_active", "very_active", "extra_active"],
+        examples=[
+            "sedentary",
+            "lightly_active",
+            "moderately_active",
+            "very_active",
+            "extra_active",
+        ],
     )
 
 

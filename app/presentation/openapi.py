@@ -114,7 +114,9 @@ def build_openapi_schema() -> dict[str, Any]:
                         },
                         "400": {"description": "Paramètres manquants ou invalides"},
                         "413": {"description": "Image trop volumineuse (max 10 MB)"},
-                        "422": {"description": "Corps de requête invalide (validation Pydantic)"},
+                        "422": {
+                            "description": "Corps de requête invalide (validation Pydantic)"
+                        },
                         "503": {
                             "description": (
                                 "Tous les providers vision sont indisponibles. "
@@ -143,7 +145,9 @@ def build_openapi_schema() -> dict[str, Any]:
                             "content": json_content("MealPlanResponse"),
                         },
                         "400": {"description": "Paramètres manquants ou invalides"},
-                        "422": {"description": "Corps de requête invalide (validation Pydantic)"},
+                        "422": {
+                            "description": "Corps de requête invalide (validation Pydantic)"
+                        },
                         "503": {
                             "description": (
                                 "LLM indisponible — le service bascule automatiquement "
@@ -190,9 +194,15 @@ def build_openapi_schema() -> dict[str, Any]:
                             "description": "Successful Response",
                             "content": json_content("WorkoutProgramResponse"),
                         },
-                        "400": {"description": "Données utilisateur insuffisantes (`INSUFFICIENT_USER_DATA`)"},
-                        "401": {"description": "Clé API invalide ou absente (`INVALID_API_KEY`)"},
-                        "503": {"description": "MongoDB indisponible (`MONGODB_UNAVAILABLE`)"},
+                        "400": {
+                            "description": "Données utilisateur insuffisantes (`INSUFFICIENT_USER_DATA`)"
+                        },
+                        "401": {
+                            "description": "Clé API invalide ou absente (`INVALID_API_KEY`)"
+                        },
+                        "503": {
+                            "description": "MongoDB indisponible (`MONGODB_UNAVAILABLE`)"
+                        },
                     },
                 },
             },
@@ -223,10 +233,18 @@ def build_openapi_schema() -> dict[str, Any]:
                             "description": "Successful Response",
                             "content": json_content("WorkoutFeedbackResponse"),
                         },
-                        "404": {"description": "Programme introuvable (`PROGRAM_NOT_FOUND`)"},
-                        "401": {"description": "Clé API invalide ou absente (`INVALID_API_KEY`)"},
-                        "422": {"description": "Validation du corps de requête échouée"},
-                        "503": {"description": "MongoDB indisponible (`MONGODB_UNAVAILABLE`)"},
+                        "404": {
+                            "description": "Programme introuvable (`PROGRAM_NOT_FOUND`)"
+                        },
+                        "401": {
+                            "description": "Clé API invalide ou absente (`INVALID_API_KEY`)"
+                        },
+                        "422": {
+                            "description": "Validation du corps de requête échouée"
+                        },
+                        "503": {
+                            "description": "MongoDB indisponible (`MONGODB_UNAVAILABLE`)"
+                        },
                     },
                 },
             },
