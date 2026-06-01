@@ -21,7 +21,7 @@ jobs:
           cache-dependency-path: requirements-dev.txt
 
       - name: Install dev dependencies
-        run: pip install --no-cache-dir ruff
+        run: pip install ruff
 
       - name: Lint (ruff check)
         run: ruff check .

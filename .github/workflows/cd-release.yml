@@ -39,7 +39,7 @@ jobs:
           cache-dependency-path: requirements-dev.txt
 
       - name: Install python-semantic-release
-        run: pip install --no-cache-dir "python-semantic-release>=9.0.0"
+        run: pip install "python-semantic-release>=9.0.0"
 
       # Configure git identity for the release commit
       - name: Configure git identity
