@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.1.3 (2026-06-01)
+
+### Bug Fixes
+
+- **cd**: Upgrade codeql-action to v4, mark sarif upload non-blocking
+  ([`bf07e12`](https://github.com/MSPR-c-l-w/api-ia/commit/bf07e12d02254b2d380fae2c846bb8a3eae2f2da))
+
+
 ## v0.1.2 (2026-06-01)
 
 ### Bug Fixes
