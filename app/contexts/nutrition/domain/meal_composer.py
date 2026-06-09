@@ -580,10 +580,9 @@ class MealComposerService:
                 i for i in allowed if i.category == cat and i.name not in used_names
             ]
             if candidates:
-                # Rotation déterministe par day_offset
-                start = day_offset % len(candidates)
-                rotated = candidates[start:] + candidates[:start]
-                pool.extend(rotated[: min(8, len(rotated))])
+                shuffled = candidates[:]
+                self._rng.shuffle(shuffled)
+                pool.extend(shuffled[: min(8, len(shuffled))])
             if len(pool) >= n_foods * 4:
                 break
 

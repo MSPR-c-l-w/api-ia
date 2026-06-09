@@ -1,9 +1,13 @@
+import logging
+
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from app.config import settings
 
 _client: AsyncIOMotorClient | None = None
 _database: AsyncIOMotorDatabase | None = None
+
+_logger = logging.getLogger(__name__)
 
 
 def get_client() -> AsyncIOMotorClient:
@@ -20,19 +24,16 @@ def get_database() -> AsyncIOMotorDatabase:
 
 async def connect_mongodb() -> None:
     global _client, _database
-    import logging
-
     from app.shared.infrastructure.indexes import ensure_indexes
 
-    logger = logging.getLogger(__name__)
     _client = AsyncIOMotorClient(settings.mongodb_uri, serverSelectionTimeoutMS=5000)
     _database = _client.get_default_database()
     try:
         await _client.admin.command("ping")
         await ensure_indexes(_database)
-        logger.info("MongoDB connecté : %s", settings.mongodb_uri)
+        _logger.info("MongoDB connecté : %s", settings.mongodb_uri)
     except Exception as exc:
-        logger.warning("MongoDB indisponible au démarrage : %s", exc)
+        _logger.warning("MongoDB indisponible au démarrage : %s", exc)
 
 
 async def close_mongodb() -> None:

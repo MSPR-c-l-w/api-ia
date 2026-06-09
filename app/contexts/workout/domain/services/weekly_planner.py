@@ -1,5 +1,7 @@
 """Planification hebdomadaire adaptative — EPIC #79 #96."""
 
+import random
+
 from app.contexts.workout.domain.data.exercises_catalog import EXERCISE_CATALOG
 from app.contexts.workout.domain.entities.workout_program import (
     PlannedExercise,
@@ -89,7 +91,9 @@ def _score_with_rotation(
 def _ranked_exercises(
     profile: UserProfileForScoring,
     recent_exercise_ids: set[str],
+    catalog: list[ExerciseDefinition] | None = None,
 ) -> list[tuple[ExerciseDefinition, float]]:
+    pool = catalog if catalog is not None else EXERCISE_CATALOG
     scored = [
         (
             exercise,
@@ -100,11 +104,11 @@ def _ranked_exercises(
                 exclude_recent=True,
             ),
         )
-        for exercise in EXERCISE_CATALOG
+        for exercise in pool
     ]
     ranked = sorted(
         [(ex, sc) for ex, sc in scored if sc > 0],
-        key=lambda item: item[1],
+        key=lambda item: item[1] * (0.75 + random.random() * 0.5),
         reverse=True,
     )
     # Fallback: if all exercises were done recently, include them with rotation penalty
@@ -116,7 +120,7 @@ def _ranked_exercises(
                     ex, profile, recent_exercise_ids, exclude_recent=False
                 ),
             )
-            for ex in EXERCISE_CATALOG
+            for ex in pool
         ]
         ranked = sorted(
             [(ex, sc) for ex, sc in scored_fallback if sc > 0],
@@ -171,12 +175,13 @@ def _to_planned_exercise(
 def generate_weekly_program(
     profile: UserProfileForScoring,
     recent_exercise_ids: list[str] | None = None,
+    catalog: list[ExerciseDefinition] | None = None,
 ) -> list[ProgramDay]:
     """
     Génère un programme sur 7 jours avec repos, récupération musculaire et rotation.
     """
     recent = set(recent_exercise_ids or [])
-    ranked = _ranked_exercises(profile, recent)
+    ranked = _ranked_exercises(profile, recent, catalog=catalog)
     by_group: dict[str, list[tuple[ExerciseDefinition, float]]] = {}
     for exercise, score in ranked:
         by_group.setdefault(exercise.muscle_group, []).append((exercise, score))
