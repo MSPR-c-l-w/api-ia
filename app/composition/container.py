@@ -28,6 +28,9 @@ from app.contexts.workout.application.use_cases.create_workout_program import (
 from app.contexts.workout.application.use_cases.submit_workout_feedback import (
     SubmitWorkoutFeedbackUseCase,
 )
+from app.contexts.workout.infrastructure.backend_exercise_lookup import (
+    BackendExerciseLookupService,
+)
 from app.contexts.workout.infrastructure.persistence import (
     MongoFitnessProfileRepository,
     MongoWorkoutFeedbackRepository,
@@ -43,8 +46,34 @@ class Container:
         self._workout_feedbacks = MongoWorkoutFeedbackRepository()
         self._fitness_profiles = MongoFitnessProfileRepository()
 
+        _exercise_lookup = None
+        try:
+            _backend_auth_ex = BackendAuthService(
+                backend_url=settings.backend_url,
+                email=settings.backend_service_email,
+                password=settings.backend_service_password,
+                timeout_seconds=settings.backend_timeout_seconds,
+            )
+            _exercise_token = _backend_auth_ex.get_token()
+            _exercise_lookup = BackendExerciseLookupService(
+                backend_url=settings.backend_url,
+                access_token=_exercise_token,
+                timeout_seconds=settings.backend_timeout_seconds,
+            )
+            logging.getLogger(__name__).info(
+                "Container: BackendExerciseLookupService actif (backend: %s)",
+                settings.backend_url,
+            )
+        except (httpx.HTTPError, RuntimeError, OSError) as exc:
+            logging.getLogger(__name__).warning(
+                "Container: impossible de connecter le lookup exercices au backend (%s)."
+                " Fallback sur catalogue statique.",
+                exc,
+            )
+
         self.create_workout_program = CreateWorkoutProgramUseCase(
-            self._workout_programs
+            self._workout_programs,
+            exercise_lookup=_exercise_lookup,
         )
         self.submit_workout_feedback = SubmitWorkoutFeedbackUseCase(
             self._workout_programs,

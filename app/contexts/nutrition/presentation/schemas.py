@@ -166,6 +166,7 @@ class MealPlanRequest(BaseModel):
         populate_by_name=True,
         json_schema_extra={
             "example": {
+                "userId": 42,
                 "userGoal": "perte_de_poids",
                 "dietaryConstraints": ["vegetarien"],
                 "allergies": ["arachide"],
@@ -179,6 +180,13 @@ class MealPlanRequest(BaseModel):
         },
     )
 
+    user_id: int | None = Field(
+        default=None,
+        alias="userId",
+        ge=1,
+        description="Identifiant utilisateur (FK logique vers User.id NestJS) — si fourni, la recommandation est persistée en MongoDB",
+        examples=[42],
+    )
     user_goal: str = Field(
         alias="userGoal",
         description="Objectif nutritionnel de l'utilisateur",

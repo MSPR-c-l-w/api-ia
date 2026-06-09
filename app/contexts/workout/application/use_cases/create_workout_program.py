@@ -24,8 +24,13 @@ from app.shared.application.exceptions import InsufficientUserDataError
 class CreateWorkoutProgramUseCase:
     """Use case : générer et persister un programme hebdomadaire personnalisé."""
 
-    def __init__(self, program_repository: WorkoutProgramRepository) -> None:
+    def __init__(
+        self,
+        program_repository: WorkoutProgramRepository,
+        exercise_lookup: object | None = None,
+    ) -> None:
         self._programs = program_repository
+        self._exercise_lookup = exercise_lookup
 
     def _validate_profile(
         self, payload: WorkoutProgramRequest
@@ -98,7 +103,17 @@ class CreateWorkoutProgramUseCase:
         await self._programs.ensure_available()
 
         recent_ids = await self._programs.get_recent_exercise_ids(payload.user_id)
-        programme = generate_weekly_program(profile, recent_exercise_ids=recent_ids)
+
+        catalog = None
+        if self._exercise_lookup is not None:
+            try:
+                catalog = await self._exercise_lookup.get_catalog()
+            except Exception:
+                catalog = None
+
+        programme = generate_weekly_program(
+            profile, recent_exercise_ids=recent_ids, catalog=catalog
+        )
 
         if not any(day.exercices for day in programme):
             raise InsufficientUserDataError()
