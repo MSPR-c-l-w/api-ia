@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v0.1.6 (2026-06-09)
+
+### Bug Fixes
+
+- Ruff lint and format
+  ([`a0d2df6`](https://github.com/MSPR-c-l-w/api-ia/commit/a0d2df683cd4b14de51f4c149b7d44b3774fc255))
+
+### Code Style
+
+- Ruff format exercises_catalog
+  ([`a0d2df6`](https://github.com/MSPR-c-l-w/api-ia/commit/a0d2df683cd4b14de51f4c149b7d44b3774fc255))
+
+### Continuous Integration
+
+- Add Dependabot for pip, GitHub Actions and Docker weekly updates
+  ([`c693785`](https://github.com/MSPR-c-l-w/api-ia/commit/c693785d6cfffb7fe79529211d4cfd2036b1be6c))
+
+- Retire codecov, conserve le rapport coverage en artifact
+  ([`a0d2df6`](https://github.com/MSPR-c-l-w/api-ia/commit/a0d2df683cd4b14de51f4c149b7d44b3774fc255))
+
+
 ## v0.1.5 (2026-06-01)
 
 ### Bug Fixes
