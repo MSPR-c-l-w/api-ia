@@ -98,7 +98,6 @@ EXERCISE_CATALOG: list[ExerciseDefinition] = [
         tags=["cardio", "intensif", "vitesse"],
         contraindications=["genou", "dos"],
     ),
-
     # ── Core / Abdominaux ───────────────────────────────────────────────────
     ExerciseDefinition(
         id="gainage",
@@ -170,7 +169,6 @@ EXERCISE_CATALOG: list[ExerciseDefinition] = [
         tags=["core", "abdos"],
         contraindications=["dos", "poignet"],
     ),
-
     # ── Pectoraux ────────────────────────────────────────────────────────────
     ExerciseDefinition(
         id="pompes",
@@ -222,7 +220,6 @@ EXERCISE_CATALOG: list[ExerciseDefinition] = [
         tags=["pectoraux", "force"],
         contraindications=["epaule"],
     ),
-
     # ── Dos ──────────────────────────────────────────────────────────────────
     ExerciseDefinition(
         id="rowing-halteres",
@@ -284,7 +281,6 @@ EXERCISE_CATALOG: list[ExerciseDefinition] = [
         tags=["dos", "force", "jambes"],
         contraindications=["dos", "genou"],
     ),
-
     # ── Jambes ───────────────────────────────────────────────────────────────
     ExerciseDefinition(
         id="squat-pdc",
@@ -346,7 +342,6 @@ EXERCISE_CATALOG: list[ExerciseDefinition] = [
         tags=["jambes", "force"],
         contraindications=["genou", "dos"],
     ),
-
     # ── Fessiers ─────────────────────────────────────────────────────────────
     ExerciseDefinition(
         id="pont-fessier",
@@ -378,7 +373,6 @@ EXERCISE_CATALOG: list[ExerciseDefinition] = [
         tags=["fessiers", "sans materiel"],
         contraindications=[],
     ),
-
     # ── Épaules ──────────────────────────────────────────────────────────────
     ExerciseDefinition(
         id="elevation-laterale",
@@ -410,7 +404,6 @@ EXERCISE_CATALOG: list[ExerciseDefinition] = [
         tags=["épaules", "dos", "haltères"],
         contraindications=["epaule"],
     ),
-
     # ── Bras ─────────────────────────────────────────────────────────────────
     ExerciseDefinition(
         id="curl-halteres",
