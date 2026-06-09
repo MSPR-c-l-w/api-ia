@@ -21,6 +21,7 @@ def get_database() -> AsyncIOMotorDatabase:
 async def connect_mongodb() -> None:
     global _client, _database
     import logging
+
     from app.shared.infrastructure.indexes import ensure_indexes
 
     logger = logging.getLogger(__name__)

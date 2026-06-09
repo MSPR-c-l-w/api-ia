@@ -54,7 +54,9 @@ def _objectif_from_bmi(bmi: float | None) -> str:
 def fetch_health_profiles() -> list[dict]:
     """Récupère tous les HealthProfile depuis le backend NestJS."""
     if not settings.backend_service_email or not settings.backend_service_password:
-        print("BACKEND_SERVICE_EMAIL/PASSWORD non configures -- fallback sur profils par defaut")
+        print(
+            "BACKEND_SERVICE_EMAIL/PASSWORD non configures -- fallback sur profils par defaut"
+        )
         return []
 
     auth = BackendAuthService(
@@ -76,7 +78,9 @@ def fetch_health_profiles() -> list[dict]:
 
 
 def _profile_from_health(hp: dict) -> dict:
-    niveau = _ACTIVITY_TO_NIVEAU.get(hp.get("physical_activity_level") or "", "debutant")
+    niveau = _ACTIVITY_TO_NIVEAU.get(
+        hp.get("physical_activity_level") or "", "debutant"
+    )
     objectif = _objectif_from_bmi(hp.get("bmi"))
     doc = UserFitnessProfile(
         user_id=hp["user_id"],
@@ -85,7 +89,9 @@ def _profile_from_health(hp: dict) -> dict:
         materiel=[],
         preferences=[],
         limitations=[],
-        historique=[{"event": "seed_from_health_profile", "at": datetime.now(UTC).isoformat()}],
+        historique=[
+            {"event": "seed_from_health_profile", "at": datetime.now(UTC).isoformat()}
+        ],
     )
     return doc.model_dump(by_alias=True)
 

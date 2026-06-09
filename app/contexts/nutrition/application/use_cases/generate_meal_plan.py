@@ -35,7 +35,9 @@ class GenerateMealPlanUseCase:
         self._llm = llm_provider or LlmProvider(endpoint=None, api_key=None)
         self._tdee = tdee_calculator or TdeeCalculator()
         self._nutrition_lookup = nutrition_lookup
-        self._nutrition_repo = nutrition_repo or MongoNutritionRecommendationRepository()
+        self._nutrition_repo = (
+            nutrition_repo or MongoNutritionRecommendationRepository()
+        )
 
     async def _persist(self, user_id: int | None, response: MealPlanResponse) -> None:
         if user_id is None:
@@ -43,7 +45,9 @@ class GenerateMealPlanUseCase:
         try:
             await self._nutrition_repo.save(user_id, response.model_dump(by_alias=True))
         except Exception as exc:
-            logger.warning("Impossible de persister la recommandation nutrition: %s", exc)
+            logger.warning(
+                "Impossible de persister la recommandation nutrition: %s", exc
+            )
 
     async def execute(self, payload: MealPlanRequest) -> MealPlanResponse:
         constraints = {item.lower() for item in payload.dietary_constraints}

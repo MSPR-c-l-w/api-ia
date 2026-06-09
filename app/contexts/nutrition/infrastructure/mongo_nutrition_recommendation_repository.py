@@ -15,7 +15,9 @@ class MongoNutritionRecommendationRepository:
         db = database.get_database()
         doc = {
             "userId": user_id,
-            "platRecommande": meal_plan.get("days", [{}])[0] if meal_plan.get("days") else {},
+            "platRecommande": meal_plan.get("days", [{}])[0]
+            if meal_plan.get("days")
+            else {},
             "mealPlan": meal_plan.get("days", []),
             "userGoal": meal_plan.get("userGoal", ""),
             "modelStatus": meal_plan.get("modelStatus", ""),
