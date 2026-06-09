@@ -4,7 +4,7 @@ Algorithme :
 1. Classifie chaque aliment par catégorie dominante (protéine, glucide, légume, etc.)
 2. Pour chaque slot de repas (petit-déj / déj / dîner), cherche la combinaison
    de 2-3 aliments qui minimise l'écart aux macros cibles.
-3. Scale les portions pour atteindre la cible calorique du slot (×1, ×2, ×3…)
+3. Scale les portions pour atteindre la cible calorique du slot (×0.5, ×2, etc.)
 4. Fait varier les combinaisons sur 7 jours (rotation des candidats).
 
 Score d'un repas = 1 − mean(|deviation_i / target_i|) ∈ [0, 1]
@@ -170,31 +170,32 @@ def _scale_to_target(
 ) -> tuple[list[str], Macros]:
     """Scale les portions pour atteindre la cible calorique.
 
-    Chaque aliment reçoit le même facteur de scaling, arrondi à l'entier le plus
-    proche (minimum ×½). Les portions sont toujours des entiers : ×1, ×2, ×3…
+    Chaque aliment reçoit le même facteur de scaling.
+    Retourne (noms avec mention de portion, macros scalées).
 
     Exemples de noms :
-    - scale=1  → "poulet grillé"         (inchangé, portion standard)
-    - scale=2  → "poulet grillé ×2"      (double portion)
-    - scale=0.5 → "poulet grillé ×½"    (demi-portion)
+    - scale=1.0 → "poulet grillé (150g)"       (inchangé)
+    - scale=2.0 → "poulet grillé (150g) ×2"    (double portion)
+    - scale=0.5 → "poulet grillé (150g) ×½"    (demi-portion)
+    - scale=1.5 → "poulet grillé (150g) ×1.5"  (portion et demie)
     """
     total_cal = sum(f.macros.calories for f in selected)
     if total_cal <= 0 or target_cal <= 0:
         return [f.name for f in selected], _combine_macros(selected)
 
     raw_scale = target_cal / total_cal
-    # Arrondi à l'entier le plus proche, borné entre 0.5 et _MAX_SCALE
-    clamped = max(_MIN_SCALE, min(_MAX_SCALE, raw_scale))
-    scale = 0.5 if clamped <= 0.75 else max(1, round(clamped))
+    scale = max(_MIN_SCALE, min(_MAX_SCALE, raw_scale))
 
     scaled_names = []
     for f in selected:
-        if scale == 1:
+        if abs(scale - 1.0) < 0.15:
             scaled_names.append(f.name)
         elif scale == 0.5:
             scaled_names.append(f"{f.name} ×½")
-        else:
+        elif scale % 1 == 0:
             scaled_names.append(f"{f.name} ×{int(scale)}")
+        else:
+            scaled_names.append(f"{f.name} ×{scale:.1f}")
 
     scaled_macros = Macros(
         calories=round(total_cal * scale),
@@ -264,50 +265,41 @@ class MealComposerService:
         allowed = self._filter_catalog(constraints, allergies)
 
         days = []
-        # Exclure tous les aliments récemment utilisés (fenêtre glissante sur 2 jours)
-        # pour garantir de la variété inter-journalière sur tous les slots.
-        used_recent: list[str] = []
+        used_proteins: list[str] = []
+        used_carbs: list[str] = []
 
         for day in range(1, 8):
-            # Réinitialise l'exclusion tous les 3 jours pour permettre les cycles
-            if day % 3 == 1:
-                used_recent = []
-
             breakfast_target = self._meal_target(profile, "breakfast")
             lunch_target = self._meal_target(profile, "lunch")
             dinner_target = self._meal_target(profile, "dinner")
             snack_target = self._meal_target(profile, "snack")
 
-            day_used: list[str] = []  # aliments utilisés aujourd'hui
-
             breakfast = self._compose_slot(
                 allowed, ["breakfast", "carb"], breakfast_target,
-                n_foods=2, exclude=used_recent, day_offset=day,
+                n_foods=2, exclude=[], day_offset=day,
             )
-            day_used += [f.split(" ×")[0] for f in breakfast.foods]
-
             lunch = self._compose_slot(
                 allowed, ["protein", "carb", "vegetable", "mixed"], lunch_target,
-                n_foods=3, exclude=used_recent + day_used, day_offset=day,
+                n_foods=3, exclude=used_proteins, day_offset=day,
             )
-            day_used += [f.split(" ×")[0] for f in lunch.foods]
-
             dinner = self._compose_slot(
                 allowed, ["protein", "vegetable", "mixed", "carb"], dinner_target,
-                n_foods=3, exclude=used_recent + day_used, day_offset=day + 7,
+                n_foods=3, exclude=used_carbs, day_offset=day + 7,
             )
-            day_used += [f.split(" ×")[0] for f in dinner.foods]
-
             snack = self._compose_slot(
                 allowed, ["mixed", "vegetable", "breakfast"], snack_target,
-                n_foods=1, exclude=used_recent + day_used, day_offset=day + 14,
+                n_foods=1, exclude=[], day_offset=day + 14,
             )
-            day_used += [f.split(" ×")[0] for f in snack.foods]
 
-            # Cumule les aliments du jour dans la fenêtre d'exclusion
-            for name in day_used:
-                if name not in used_recent:
-                    used_recent.append(name)
+            # Mémorise les protéines/glucides utilisés pour varier les jours suivants
+            for food_name in lunch.foods + dinner.foods:
+                # Retire le suffixe de portion (ex: "×2") pour retrouver l'item
+                base_name = food_name.split(" ×")[0]
+                cat = next((i.category for i in self._items if i.name == base_name), None)
+                if cat == FoodCategory.PROTEIN and base_name not in used_proteins:
+                    used_proteins.append(base_name)
+                elif cat == FoodCategory.CARB and base_name not in used_carbs:
+                    used_carbs.append(base_name)
 
             total_cal = int(
                 breakfast.macros.calories
@@ -450,13 +442,9 @@ class MealComposerService:
             if len(pool) >= n_foods * 4:
                 break
 
-        # Fallback niveau 1 : tous les aliments permis (hors exclusions)
+        # Fallback : tous les aliments permis
         if len(pool) < n_foods:
             pool = [i for i in allowed if i.name not in used_names]
-
-        # Fallback niveau 2 : catalogue complet si les exclusions ont tout éliminé
-        if len(pool) < n_foods:
-            pool = list(allowed)
 
         if not pool:
             return ComposedMeal(foods=[], macros=Macros(0, 0, 0, 0, 0), score=0.0)
