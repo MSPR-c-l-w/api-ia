@@ -5,6 +5,9 @@ import logging
 
 from app.contexts.nutrition.domain.ports import LlmProviderPort, NutritionLookupPort
 from app.contexts.nutrition.domain.tdee import TdeeCalculator
+from app.contexts.nutrition.infrastructure.mongo_nutrition_recommendation_repository import (
+    MongoNutritionRecommendationRepository,
+)
 from app.contexts.nutrition.presentation.schemas import (
     DailyMealPlan,
     MealPlanRequest,
@@ -25,12 +28,22 @@ class GenerateMealPlanUseCase:
         llm_provider: LlmProviderPort | None = None,
         tdee_calculator: TdeeCalculator | None = None,
         nutrition_lookup: NutritionLookupPort | None = None,
+        nutrition_repo: MongoNutritionRecommendationRepository | None = None,
     ) -> None:
         from app.contexts.nutrition.infrastructure.llm_provider import LlmProvider
 
         self._llm = llm_provider or LlmProvider(endpoint=None, api_key=None)
         self._tdee = tdee_calculator or TdeeCalculator()
         self._nutrition_lookup = nutrition_lookup
+        self._nutrition_repo = nutrition_repo or MongoNutritionRecommendationRepository()
+
+    async def _persist(self, user_id: int | None, response: MealPlanResponse) -> None:
+        if user_id is None:
+            return
+        try:
+            await self._nutrition_repo.save(user_id, response.model_dump(by_alias=True))
+        except Exception as exc:
+            logger.warning("Impossible de persister la recommandation nutrition: %s", exc)
 
     async def execute(self, payload: MealPlanRequest) -> MealPlanResponse:
         constraints = {item.lower() for item in payload.dietary_constraints}
@@ -40,7 +53,7 @@ class GenerateMealPlanUseCase:
         # Try LLM-generated plan first (#89/#90)
         llm_days = await self._try_llm_plan(payload, daily_calories)
         if llm_days:
-            return MealPlanResponse(
+            result = MealPlanResponse(
                 userGoal=payload.user_goal,
                 days=llm_days,
                 notes=[
@@ -49,13 +62,15 @@ class GenerateMealPlanUseCase:
                 ],
                 modelStatus="llm_active",
             )
+            await self._persist(payload.user_id, result)
+            return result
 
         # MealComposer fallback — uses the real Kaggle food catalog
         composer_days = await self._compose_plan(payload, constraints, allergies)
         if composer_days:
             scores = [d.get("score", 0) for d in composer_days]
             avg_score = round(sum(scores) / len(scores), 3) if scores else 0
-            return MealPlanResponse(
+            result = MealPlanResponse(
                 userGoal=payload.user_goal,
                 days=[
                     DailyMealPlan(
@@ -75,9 +90,11 @@ class GenerateMealPlanUseCase:
                 ],
                 modelStatus="composer_active",
             )
+            await self._persist(payload.user_id, result)
+            return result
 
         # Static stub fallback (last resort)
-        return MealPlanResponse(
+        result = MealPlanResponse(
             userGoal=payload.user_goal,
             days=self._static_plan(constraints, allergies, daily_calories),
             notes=[
@@ -86,6 +103,8 @@ class GenerateMealPlanUseCase:
             ],
             modelStatus="stub_ready_for_llm",
         )
+        await self._persist(payload.user_id, result)
+        return result
 
     def _resolve_calories(self, payload: MealPlanRequest) -> int:
         """Return daily caloric target: TDEE (if biometrics) > explicit target > goal default."""
