@@ -3,10 +3,14 @@ services:
     build: .
     ports:
       - "${PORT:-8000}:8000"
+      - "27017:27017"
     environment:
       ENVIRONMENT: development
       BACKEND_API_KEY: ${BACKEND_API_KEY:-dev-backend-key}
       PORT: 8000
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:3001}
+      BACKEND_SERVICE_EMAIL: ${BACKEND_SERVICE_EMAIL:-}
+      BACKEND_SERVICE_PASSWORD: ${BACKEND_SERVICE_PASSWORD:-}
       # MONGODB_URI is already defaulted in the image to localhost:27017
       # Override here only if you want to use an external MongoDB
     volumes:

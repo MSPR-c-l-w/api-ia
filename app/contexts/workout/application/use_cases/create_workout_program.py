@@ -68,6 +68,7 @@ class CreateWorkoutProgramUseCase:
             exercises = [
                 WorkoutSessionExerciseResponse(
                     id=planned.id,
+                    name=planned.name,
                     sets=planned.sets,
                     reps=planned.reps,
                     duree=planned.duree,

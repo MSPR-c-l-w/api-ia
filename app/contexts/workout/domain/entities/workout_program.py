@@ -13,6 +13,7 @@ class PlannedExercise(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id: str = Field(description="Identifiant exercice (référence catalogue)")
+    name: str | None = Field(default=None, description="Nom lisible de l'exercice")
     sets: int | None = None
     reps: int | None = None
     duree: int | None = Field(
