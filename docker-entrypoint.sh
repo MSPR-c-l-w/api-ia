@@ -5,7 +5,7 @@ set -e
 echo "[entrypoint] Starting MongoDB..."
 mongod \
     --dbpath=/data/db \
-    --bind_ip=127.0.0.1 \
+    --bind_ip=0.0.0.0 \
     --port=27017 \
     --quiet \
     --nounixsocket &

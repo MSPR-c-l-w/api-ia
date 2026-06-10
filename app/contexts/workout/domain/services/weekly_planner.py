@@ -164,9 +164,14 @@ def _to_planned_exercise(
     duration_minutes: int,
 ) -> PlannedExercise:
     if exercise.muscle_group == "cardio":
-        return PlannedExercise(id=exercise.id, duree=max(5, duration_minutes))
+        return PlannedExercise(
+            id=exercise.id,
+            name=exercise.name,
+            duree=max(5, duration_minutes),
+        )
     return PlannedExercise(
         id=exercise.id,
+        name=exercise.name,
         sets=3,
         reps=10 if exercise.level in {"debutant", "intermediaire"} else 12,
     )

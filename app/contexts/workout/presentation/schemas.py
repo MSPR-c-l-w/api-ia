@@ -58,6 +58,11 @@ class WorkoutSessionExerciseResponse(BaseModel):
         description="Identifiant exercice (catalogue interne)",
         examples=["pont-fessier"],
     )
+    name: str | None = Field(
+        default=None,
+        description="Nom lisible de l'exercice",
+        examples=["Pont fessier"],
+    )
     sets: int | None = Field(default=None, description="Nombre de séries", examples=[3])
     reps: int | None = Field(
         default=None, description="Répétitions par série", examples=[12]
