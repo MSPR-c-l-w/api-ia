@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v0.1.7 (2026-06-10)
+
+### Bug Fixes
+
+- Nom des exercices dans la réponse workout + variables env backend
+  ([#24](https://github.com/MSPR-c-l-w/api-ia/pull/24),
+  [`8f014a1`](https://github.com/MSPR-c-l-w/api-ia/commit/8f014a1899abb00472413add9f4e9857b98f8b6a))
+
+- Propagate exercise name in workout response + pass backend env vars to container
+  ([#24](https://github.com/MSPR-c-l-w/api-ia/pull/24),
+  [`8f014a1`](https://github.com/MSPR-c-l-w/api-ia/commit/8f014a1899abb00472413add9f4e9857b98f8b6a))
+
+- **lint**: Format weekly_planner.py pour ruff ([#24](https://github.com/MSPR-c-l-w/api-ia/pull/24),
+  [`8f014a1`](https://github.com/MSPR-c-l-w/api-ia/commit/8f014a1899abb00472413add9f4e9857b98f8b6a))
+
+
 ## v0.1.6 (2026-06-09)
 
 ### Bug Fixes
