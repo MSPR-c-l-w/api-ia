@@ -164,7 +164,11 @@ def _to_planned_exercise(
     duration_minutes: int,
 ) -> PlannedExercise:
     if exercise.muscle_group == "cardio":
-        return PlannedExercise(id=exercise.id, name=exercise.name, duree=max(5, duration_minutes))
+        return PlannedExercise(
+            id=exercise.id,
+            name=exercise.name,
+            duree=max(5, duration_minutes),
+        )
     return PlannedExercise(
         id=exercise.id,
         name=exercise.name,
