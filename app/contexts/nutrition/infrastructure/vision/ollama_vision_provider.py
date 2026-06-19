@@ -28,6 +28,13 @@ _PROMPT = (
     "Utilise des noms simples en français, au singulier. N'invente aucun aliment."
 )
 _DEFAULT_CONFIDENCE = 0.7
+# Les petits modèles de vision locaux n'émettent pas de score de confiance
+# calibré : un aliment correctement nommé peut recevoir un score arbitrairement
+# bas. On applique un plancher pour ne pas écarter une détection valide en aval
+# (le use case filtre les détections sous 0.5).
+_MIN_CONFIDENCE = 0.6
+# Certains hôtes d'images (CDN, Wikimedia…) rejettent le User-Agent par défaut.
+_IMAGE_HEADERS = {"User-Agent": "HealthAI-Coach/1.0 (nutrition image fetch)"}
 
 
 class OllamaVisionProvider:
@@ -108,7 +115,8 @@ class OllamaVisionProvider:
                 confidence = float(food.get("confidence", _DEFAULT_CONFIDENCE))
             except (TypeError, ValueError):
                 confidence = _DEFAULT_CONFIDENCE
-            confidence = min(max(confidence, 0.0), 1.0)
+            # Plancher : on fait confiance au label, pas au score brut du modèle.
+            confidence = min(max(confidence, _MIN_CONFIDENCE), 1.0)
             detections.append(VisionDetection(label=label, confidence=confidence))
         return detections
 
@@ -116,6 +124,8 @@ class OllamaVisionProvider:
         if not image_url:
             return None
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.get(image_url)
+            resp = await client.get(
+                image_url, headers=_IMAGE_HEADERS, follow_redirects=True
+            )
             resp.raise_for_status()
         return base64.standard_b64encode(resp.content).decode("utf-8")

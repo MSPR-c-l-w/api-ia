@@ -45,7 +45,7 @@ class _FakeAsyncClient:
             200, json={"message": {"content": self._chat_content}}, request=req
         )
 
-    async def get(self, url):
+    async def get(self, url, headers=None, follow_redirects=False):
         if self._raise_get is not None:
             raise self._raise_get
         req = httpx.Request("GET", url)
@@ -125,6 +125,7 @@ async def test_confidence_defaults_and_clamps(monkeypatch):
                 {"label": "pain"},  # pas de confidence → défaut
                 {"label": "beurre", "confidence": 1.5},  # > 1 → borné à 1.0
                 {"label": "miel", "confidence": "abc"},  # invalide → défaut
+                {"label": "carotte", "confidence": 0.3},  # < plancher → 0.6
             ]
         }
     )
@@ -137,6 +138,7 @@ async def test_confidence_defaults_and_clamps(monkeypatch):
     assert by_label["pain"] == 0.7
     assert by_label["beurre"] == 1.0
     assert by_label["miel"] == 0.7
+    assert by_label["carotte"] == 0.6  # score bas relevé au plancher
 
 
 async def test_skips_items_without_label(monkeypatch):
