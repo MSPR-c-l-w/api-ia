@@ -19,6 +19,9 @@ from app.contexts.nutrition.infrastructure.mongo_nutrition_lookup import (
 from app.contexts.nutrition.infrastructure.vision.google_vision_provider import (
     GoogleVisionProvider,
 )
+from app.contexts.nutrition.infrastructure.vision.ollama_vision_provider import (
+    OllamaVisionProvider,
+)
 from app.contexts.workout.application.use_cases.create_workout_program import (
     CreateWorkoutProgramUseCase,
 )
@@ -79,6 +82,12 @@ class Container:
             test_mode=settings.skip_mongodb_on_startup,
         )
 
+        # Vision locale gratuite (Ollama) — prioritaire ; fallback Google puis stub.
+        ollama_vision = OllamaVisionProvider(
+            endpoint=settings.nutrition_vision_ollama_endpoint,
+            model=settings.nutrition_vision_ollama_model,
+            timeout_seconds=settings.nutrition_vision_ollama_timeout_seconds,
+        )
         google_provider = GoogleVisionProvider(
             endpoint=settings.nutrition_google_vision_endpoint,
             api_key=settings.nutrition_google_vision_api_key,
@@ -100,7 +109,7 @@ class Container:
         ai_cache = AiCacheService()
 
         self.analyze_meal = AnalyzeMealUseCase(
-            vision_providers=[google_provider],
+            vision_providers=[ollama_vision, google_provider],
             nutrition_lookup=nutrition_lookup,
             imbalance_service=imbalance_service,
             llm_provider=llm_provider,

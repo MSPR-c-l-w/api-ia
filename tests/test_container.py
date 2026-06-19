@@ -4,6 +4,12 @@ from app.composition.container import Container, get_container
 from app.contexts.nutrition.infrastructure.mongo_nutrition_lookup import (
     MongoNutritionLookupService,
 )
+from app.contexts.nutrition.infrastructure.vision.google_vision_provider import (
+    GoogleVisionProvider,
+)
+from app.contexts.nutrition.infrastructure.vision.ollama_vision_provider import (
+    OllamaVisionProvider,
+)
 
 
 def test_get_container_is_cached():
@@ -27,3 +33,12 @@ def test_nutrition_lookup_is_mongo_backed():
     assert isinstance(
         c.generate_meal_plan._nutrition_lookup, MongoNutritionLookupService
     )
+
+
+def test_vision_providers_order_ollama_then_google():
+    # Vision locale Ollama (gratuite) prioritaire, fallback Google Vision.
+    c = Container()
+
+    providers = c.analyze_meal._vision_providers
+    assert isinstance(providers[0], OllamaVisionProvider)
+    assert isinstance(providers[1], GoogleVisionProvider)
