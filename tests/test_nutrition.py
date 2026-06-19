@@ -50,6 +50,52 @@ def test_nutrition_meal_plan_endpoint(client):
     )  # collation fournie (aliment réel du catalogue)
 
 
+HEADERS = {"X-API-Key": "test-api-key"}
+
+
+def test_analyze_photo_requires_api_key(client):
+    response = client.post(
+        "/ai/nutrition/analyze-photo",
+        json={"imageUrl": "https://example.com/meal.jpg", "userId": 42},
+    )
+
+    assert response.status_code == 401
+
+
+def test_analyze_photo_rejects_wrong_api_key(client):
+    response = client.post(
+        "/ai/nutrition/analyze-photo",
+        json={"imageUrl": "https://example.com/meal.jpg", "userId": 42},
+        headers={"X-API-Key": "wrong"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_analyze_photo_returns_backend_contract(client):
+    response = client.post(
+        "/ai/nutrition/analyze-photo",
+        json={"imageUrl": "https://example.com/meal.jpg", "userId": 42},
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+
+    # Contrat strictement aligné sur FoodAnalysisResult (backend NestJS).
+    assert data["imageUrl"] == "https://example.com/meal.jpg"
+    assert isinstance(data["alimentsDetectes"], list)
+    assert len(data["alimentsDetectes"]) > 0
+    first = data["alimentsDetectes"][0]
+    assert set(first.keys()) == {"name", "quantityG", "confidence"}
+    assert first["name"]
+    assert 0 <= first["confidence"] <= 1
+    assert set(data["macros"].keys()) == {"calories", "proteinG", "carbsG", "fatG"}
+    assert data["macros"]["calories"] > 0
+    assert isinstance(data["suggestions"], list)
+    assert data["modelStatus"]
+
+
 def test_nutrition_legacy_analyze_endpoint_still_available(client):
     response = client.post(
         "/api/nutrition/analyze",

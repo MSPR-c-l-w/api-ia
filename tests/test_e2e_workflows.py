@@ -34,7 +34,12 @@ from app.shared.infrastructure import database
 pytestmark = pytest.mark.e2e
 
 _TEST_URI = "mongodb://localhost:27017/healthai_coach_e2e?serverSelectionTimeoutMS=1500"
-_COLLECTIONS = (col.WORKOUT_PROGRAMS, col.USER_FITNESS_PROFILES, col.WORKOUT_FEEDBACKS)
+_COLLECTIONS = (
+    col.WORKOUT_PROGRAMS,
+    col.USER_FITNESS_PROFILES,
+    col.WORKOUT_FEEDBACKS,
+    col.NUTRITION_FOODS,
+)
 
 
 @pytest.fixture
@@ -129,6 +134,39 @@ async def test_nutrition_analyze_flow(container):
     )
     assert result.detected_foods is not None
     assert len(result.feedback) > 0
+
+
+async def test_nutrition_food_detection_resolves_from_mongo(container):
+    # Seed du catalogue d'aliments dans la vraie base.
+    await database.get_database()[col.NUTRITION_FOODS].insert_many(
+        [
+            {
+                "name": "poulet",
+                "aliases": ["chicken"],
+                "calories_kcal": 165,
+                "protein_g": 31.0,
+                "carbohydrates_g": 0.0,
+                "fat_g": 3.6,
+                "fiber_g": 0.0,
+            },
+            {
+                "name": "riz",
+                "aliases": ["rice"],
+                "calories_kcal": 130,
+                "protein_g": 2.7,
+                "carbohydrates_g": 28.0,
+                "fat_g": 0.3,
+                "fiber_g": 0.4,
+            },
+        ]
+    )
+
+    # Le lookup câblé dans le container lit bien depuis MongoDB.
+    lookup = container.analyze_meal._nutrition_lookup
+    macros = await lookup.compute_macros(["poulet", "rice"], serving_g=100.0)
+
+    assert macros.estimated is False
+    assert macros.calories == 295  # 165 + 130 → chaque élément du plat reconnu
 
 
 async def test_nutrition_meal_plan_flow(container):

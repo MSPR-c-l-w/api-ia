@@ -161,6 +161,72 @@ class NutritionAnalysisResponse(BaseModel):
     )
 
 
+class PhotoDetectedFood(BaseModel):
+    """Aliment reconnu sur la photo — format consommé par le backend NestJS."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: str = Field(description="Nom de l'aliment reconnu (issu du catalogue)")
+    quantity_g: float | None = Field(
+        default=None,
+        alias="quantityG",
+        description="Quantité estimée pour cet aliment (g)",
+    )
+    confidence: float = Field(
+        ge=0, le=1, description="Score de confiance de la détection"
+    )
+
+
+class PhotoMacros(BaseModel):
+    """Macros agrégées du plat — format consommé par le backend NestJS."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    calories: float = Field(description="Calories totales estimées (kcal)")
+    protein_g: float = Field(alias="proteinG", description="Protéines (g)")
+    carbs_g: float = Field(alias="carbsG", description="Glucides (g)")
+    fat_g: float = Field(alias="fatG", description="Lipides (g)")
+
+
+class PhotoAnalysisResponse(BaseModel):
+    """Réponse de ``POST /ai/nutrition/analyze-photo``.
+
+    Contrat strictement aligné sur ``FoodAnalysisResult`` du backend NestJS
+    (``src/ai/interfaces/food-analysis.interface.ts``).
+    """
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra={
+            "example": {
+                "imageUrl": "https://example.com/meal.jpg",
+                "alimentsDetectes": [
+                    {"name": "poulet", "quantityG": 150.0, "confidence": 0.91},
+                    {"name": "riz", "quantityG": 150.0, "confidence": 0.88},
+                ],
+                "macros": {
+                    "calories": 442,
+                    "proteinG": 50.6,
+                    "carbsG": 42.6,
+                    "fatG": 5.9,
+                },
+                "suggestions": ["Repas équilibré pour un objectif d'équilibre."],
+                "modelStatus": "vision_stub",
+            },
+        },
+    )
+
+    image_url: str = Field(alias="imageUrl", description="URL de la photo analysée")
+    aliments_detectes: list[PhotoDetectedFood] = Field(
+        alias="alimentsDetectes", description="Aliments reconnus dans le plat"
+    )
+    macros: PhotoMacros = Field(description="Macros estimées du plat")
+    suggestions: list[str] = Field(description="Conseils nutritionnels générés")
+    model_status: str = Field(
+        alias="modelStatus", description="État du modèle de détection"
+    )
+
+
 class MealPlanRequest(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
