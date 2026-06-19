@@ -78,6 +78,17 @@ async def test_skips_non_dict_items(monkeypatch):
     assert detections[0].label == "riz"
 
 
+async def test_skips_non_dict_items_in_list_shape(monkeypatch):
+    content = json.dumps(["bad", {"label": "riz", "score": 0.6}])
+    _patch_urlopen(monkeypatch, content=content)
+    provider = GoogleVisionProvider(endpoint="http://vision", api_key=None)
+
+    detections = await provider.detect_foods("http://img", None)
+
+    assert len(detections) == 1
+    assert detections[0].label == "riz"
+
+
 async def test_unknown_shape_returns_empty(monkeypatch):
     _patch_urlopen(monkeypatch, content=json.dumps({"unexpected": True}))
     provider = GoogleVisionProvider(endpoint="http://vision", api_key=None)

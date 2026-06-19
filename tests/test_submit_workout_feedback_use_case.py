@@ -260,3 +260,44 @@ async def test_active_temporary_limitation_is_kept():
         await use_case.execute(PROGRAM_ID, WorkoutFeedbackRequest(rating=3))
 
     assert f"{TEMP_LIMITATION_PREFIX}active-exo" in profiles.upserted.limitations
+
+
+async def test_prune_ignores_event_without_expiry():
+    # Évènement temporary_limitation sans expiresAt → ignoré (la limitation tombe).
+    profile = UserFitnessProfile(
+        user_id=7,
+        objectif="renforcement",
+        niveau="debutant",
+        limitations=[f"{TEMP_LIMITATION_PREFIX}orphan"],
+        historique=[{"type": "temporary_limitation", "exerciseIds": ["orphan"]}],
+    )
+    use_case, _, profiles = _make_use_case(program={"userId": 7}, profile=profile)
+    with _mongo_up():
+        await use_case.execute(PROGRAM_ID, WorkoutFeedbackRequest(rating=3))
+
+    assert f"{TEMP_LIMITATION_PREFIX}orphan" not in profiles.upserted.limitations
+
+
+async def test_prune_handles_naive_expiry_datetime():
+    # expiresAt sans fuseau horaire (datetime naïf) doit être traité comme UTC.
+    future_naive = (
+        (datetime.now(UTC) + timedelta(days=5)).replace(tzinfo=None).isoformat()
+    )
+    profile = UserFitnessProfile(
+        user_id=7,
+        objectif="renforcement",
+        niveau="debutant",
+        limitations=[f"{TEMP_LIMITATION_PREFIX}naive-exo"],
+        historique=[
+            {
+                "type": "temporary_limitation",
+                "exerciseIds": ["naive-exo"],
+                "expiresAt": future_naive,
+            }
+        ],
+    )
+    use_case, _, profiles = _make_use_case(program={"userId": 7}, profile=profile)
+    with _mongo_up():
+        await use_case.execute(PROGRAM_ID, WorkoutFeedbackRequest(rating=3))
+
+    assert f"{TEMP_LIMITATION_PREFIX}naive-exo" in profiles.upserted.limitations

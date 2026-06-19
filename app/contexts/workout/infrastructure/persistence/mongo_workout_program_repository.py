@@ -38,7 +38,10 @@ class MongoWorkoutProgramRepository(WorkoutProgramRepository):
             raise ProgramNotFoundError()
         try:
             oid = ObjectId(program_id)
-        except (InvalidId, TypeError) as exc:
+        except (
+            InvalidId,
+            TypeError,
+        ) as exc:  # pragma: no cover - garde défensif (is_valid filtre déjà)
             raise ProgramNotFoundError() from exc
 
         db = database.get_database()

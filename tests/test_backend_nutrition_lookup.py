@@ -159,6 +159,19 @@ def test_is_food_label_delegates_to_fallback():
     assert service.is_food_label("poulet") is True
 
 
+async def test_items_without_name_are_skipped(monkeypatch):
+    _patch_client(
+        monkeypatch,
+        total=2,
+        pages={1: [_item("poulet"), {"name": "", "calories_kcal": 50}]},
+    )
+    service = BackendNutritionLookupService("http://backend:3001", "jwt")
+
+    catalog = await service.get_catalog()
+
+    assert set(catalog) == {"poulet"}
+
+
 async def test_cache_avoids_second_backend_load(monkeypatch):
     client = _FakeAsyncClient(total=1, pages={1: [_item("poulet")]})
     monkeypatch.setattr(backend_nutrition_lookup.httpx, "AsyncClient", client)
