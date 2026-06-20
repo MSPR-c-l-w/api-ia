@@ -236,6 +236,7 @@ class MealPlanRequest(BaseModel):
                 "userGoal": "perte_de_poids",
                 "dietaryConstraints": ["vegetarien"],
                 "allergies": ["arachide"],
+                "budget": 150.0,
                 "dailyCaloriesTarget": 1900,
                 "weightKg": 70.0,
                 "heightCm": 168.0,
@@ -266,6 +267,18 @@ class MealPlanRequest(BaseModel):
     allergies: list[str] = Field(
         default_factory=list,
         description="Allergies à exclure des propositions",
+    )
+    budget: float | None = Field(
+        default=None,
+        ge=0,
+        alias="budget",
+        description=(
+            "Budget mensuel alimentation en € (UserAiPreferences.budget). "
+            "Pas de prix par aliment dans le catalogue Kaggle : pris en compte "
+            "qualitativement par le LLM (ingrédients abordables), pas comme "
+            "contrainte numérique stricte."
+        ),
+        examples=[150.0],
     )
     daily_calories_target: int | None = Field(
         default=None,

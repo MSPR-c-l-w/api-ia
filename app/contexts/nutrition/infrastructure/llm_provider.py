@@ -88,6 +88,7 @@ class LlmProvider:
         dietary_constraints: list[str],
         allergies: list[str],
         daily_calories: int,
+        budget: float | None = None,
     ) -> str | None:
         """Ask LLM for a raw 7-day meal plan JSON string. Returns None on failure."""
         if not self._endpoint:
@@ -101,11 +102,20 @@ class LlmProvider:
             if dietary_constraints
             else ""
         )
+        # Pas de prix par aliment dans le catalogue Kaggle : le budget guide le
+        # LLM qualitativement (ingrédients de base/abordables), pas un calcul
+        # numérique strict.
+        budget_text = (
+            f"Budget alimentaire mensuel limité à {budget:.0f}€ : privilégie des "
+            "ingrédients abordables et de base, évite les produits premium/hors saison."
+            if budget
+            else ""
+        )
 
         prompt = (
             "Tu es un nutritionniste expert. Réponds uniquement en français et en JSON.\n"
             f"Objectif : {goal}. Calories quotidiennes : {daily_calories} kcal.\n"
-            f"{constraints_text} {allergies_text}\n"
+            f"{constraints_text} {allergies_text} {budget_text}\n"
             "Génère un plan repas pour 7 jours (petit-déjeuner, déjeuner, dîner, collation). "
             'Format JSON : {"days": [{"day": 1, "breakfast": "...", "lunch": "...", '
             '"dinner": "...", "snack": "...", "estimatedCalories": N}, ...]}'

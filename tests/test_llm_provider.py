@@ -18,6 +18,7 @@ class _FakeAsyncClient:
     def __init__(self, *, text: str | None = None, raise_exc: Exception | None = None):
         self._text = text
         self._raise = raise_exc
+        self.last_content: bytes | None = None
 
     def __call__(self, *args, **kwargs):  # instancié comme httpx.AsyncClient(...)
         return self
@@ -29,13 +30,16 @@ class _FakeAsyncClient:
         return False
 
     async def post(self, url, content=None, headers=None):
+        self.last_content = content
         if self._raise is not None:
             raise self._raise
         return httpx.Response(200, text=self._text, request=httpx.Request("POST", url))
 
 
-def _patch_client(monkeypatch, **kwargs):
-    monkeypatch.setattr(llm_provider.httpx, "AsyncClient", _FakeAsyncClient(**kwargs))
+def _patch_client(monkeypatch, **kwargs) -> _FakeAsyncClient:
+    fake_client = _FakeAsyncClient(**kwargs)
+    monkeypatch.setattr(llm_provider.httpx, "AsyncClient", fake_client)
+    return fake_client
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +133,31 @@ async def test_meal_plan_text_returns_raw_body(monkeypatch):
     )
 
     assert result == body
+
+
+async def test_meal_plan_text_includes_budget_in_prompt(monkeypatch):
+    fake_client = _patch_client(monkeypatch, text=json.dumps({"response": "{}"}))
+    provider = LlmProvider(endpoint="http://ollama:11434/api/generate", api_key="k")
+
+    await provider.generate_meal_plan_text(
+        "equilibre",
+        [],
+        [],
+        2100,
+        budget=150.0,
+    )
+
+    assert "150" in fake_client.last_content
+    assert "budget" in fake_client.last_content.lower()
+
+
+async def test_meal_plan_text_omits_budget_text_when_none(monkeypatch):
+    fake_client = _patch_client(monkeypatch, text=json.dumps({"response": "{}"}))
+    provider = LlmProvider(endpoint="http://ollama:11434/api/generate", api_key="k")
+
+    await provider.generate_meal_plan_text("equilibre", [], [], 2100)
+
+    assert "budget" not in fake_client.last_content.lower()
 
 
 async def test_meal_plan_text_none_on_http_error(monkeypatch):

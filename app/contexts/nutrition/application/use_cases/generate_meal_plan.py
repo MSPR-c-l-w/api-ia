@@ -57,13 +57,19 @@ class GenerateMealPlanUseCase:
         # Try LLM-generated plan first (#89/#90)
         llm_days = await self._try_llm_plan(payload, daily_calories)
         if llm_days:
+            notes = [
+                "Plan généré par le modèle de langage.",
+                "Les préférences et contraintes déclarées sont prises en compte.",
+            ]
+            if payload.budget:
+                notes.append(
+                    f"Budget alimentaire mensuel ({payload.budget:.0f}€) pris en compte "
+                    "qualitativement (ingrédients abordables).",
+                )
             result = MealPlanResponse(
                 userGoal=payload.user_goal,
                 days=llm_days,
-                notes=[
-                    "Plan généré par le modèle de langage.",
-                    "Les préférences et contraintes déclarées sont prises en compte.",
-                ],
+                notes=notes,
                 modelStatus="llm_active",
             )
             await self._persist(payload.user_id, result)
@@ -133,6 +139,7 @@ class GenerateMealPlanUseCase:
             dietary_constraints=payload.dietary_constraints,
             allergies=payload.allergies,
             daily_calories=daily_calories,
+            budget=payload.budget,
         )
         if raw is None:
             return None
