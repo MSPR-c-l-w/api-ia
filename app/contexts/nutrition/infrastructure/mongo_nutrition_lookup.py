@@ -54,6 +54,8 @@ class MongoNutritionLookupService:
         self._fallback = NutritionLookupService()
         # {nom_normalisé: macros pour 100 g}
         self._table: dict[str, _Macro5] = {}
+        # {nom_normalisé / alias: nom canonique exact de la base NoSQL}
+        self._canonical: dict[str, str] = {}
         # patterns pré-compilés avec tolérance pluriel (suffixe « s? »)
         self._compiled_patterns: dict[str, re.Pattern[str]] = {}
         self._loaded_at: float = 0.0
@@ -93,11 +95,7 @@ class MongoNutritionLookupService:
         return dict(self._table)
 
     def resolve_food_name(self, label: str) -> str | None:
-        """Retourne le nom de catalogue correspondant au label, ou ``None``.
-
-        Permet à la couche présentation de renvoyer le nom canonique de
-        l'aliment reconnu (ex. "chicken" → "poulet") plutôt que le label brut.
-        """
+        """Retourne la clé de catalogue (normalisée) correspondant au label."""
         normalised = _normalise(label)
         if not normalised:
             return None
@@ -108,6 +106,16 @@ class MongoNutritionLookupService:
             if key_re.search(normalised) or label_re.search(key):
                 return key
         return None
+
+    async def resolve_name(self, label: str) -> str | None:
+        """Nom exact de l'aliment dans la base NoSQL pour un label détecté.
+
+        Ex. "chicken" → "Poulet grillé 100g". Retourne ``None`` si l'aliment
+        n'est pas reconnu (la couche appelante conserve alors le label brut).
+        """
+        await self._ensure_loaded()
+        key = self.resolve_food_name(label)
+        return self._canonical.get(key) if key else None
 
     # ------------------------------------------------------------------
     # Internes
@@ -185,20 +193,25 @@ class MongoNutritionLookupService:
             )
 
         new_table: dict[str, _Macro5] = {}
+        new_canonical: dict[str, str] = {}
 
         def put_aliases(group: list[dict]) -> None:
             for item in group:
                 macros = macros_of(item)
+                original = item.get("name") or ""
                 for alias in item.get("aliases") or []:
                     alias_norm = _normalise(str(alias))
                     if alias_norm:
                         new_table[alias_norm] = macros
+                        new_canonical[alias_norm] = original
 
         def put_names(group: list[dict]) -> None:
             for item in group:
-                name = _normalise(item.get("name") or "")
+                original = item.get("name") or ""
+                name = _normalise(original)
                 if name:
                     new_table[name] = macros_of(item)
+                    new_canonical[name] = original
 
         for step in (
             lambda: put_aliases(static),
@@ -212,6 +225,7 @@ class MongoNutritionLookupService:
             raise RuntimeError("collection nutrition_foods vide")
 
         self._table = new_table
+        self._canonical = new_canonical
         self._compiled_patterns = {
             key: re.compile(r"\b" + re.escape(key) + r"s?\b") for key in new_table
         }

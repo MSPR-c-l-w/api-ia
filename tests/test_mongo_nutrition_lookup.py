@@ -178,6 +178,25 @@ async def test_resolve_food_name_returns_canonical(monkeypatch):
     assert service.resolve_food_name("riz complet") is None
 
 
+async def test_resolve_name_returns_db_canonical(monkeypatch):
+    # Le label du modèle de vision est résolu vers le nom exact de la base NoSQL.
+    _patch_mongo(
+        monkeypatch,
+        [
+            _doc(
+                "Poulet grillé 100g",
+                aliases=["chicken", "poulet"],
+                category="Viande",
+            )
+        ],
+    )
+    service = MongoNutritionLookupService()
+
+    assert await service.resolve_name("chicken") == "Poulet grillé 100g"
+    assert await service.resolve_name("Poulet") == "Poulet grillé 100g"
+    assert await service.resolve_name("aliment-inconnu-xyz") is None
+
+
 async def test_unknown_food_marked_estimated(monkeypatch):
     _patch_mongo(monkeypatch, [_doc("poulet")])
     service = MongoNutritionLookupService()

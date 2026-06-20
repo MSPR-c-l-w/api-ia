@@ -114,6 +114,19 @@ class AnalyzeMealUseCase:
         food_labels = [f.label for f in detected_foods]
         macros = await self._nutrition_lookup.compute_macros(food_labels)
 
+        # 3b. Remplace le label brut du modèle par le nom exact de l'aliment
+        # dans la base NoSQL quand il y est reconnu (ex. "chicken" → "Poulet
+        # grillé 100g"). Conserve le label brut sinon.
+        resolve_name = getattr(self._nutrition_lookup, "resolve_name", None)
+        if resolve_name is not None:
+            detected_foods = [
+                DetectedFood(
+                    label=(await resolve_name(food.label)) or food.label,
+                    confidence=food.confidence,
+                )
+                for food in detected_foods
+            ]
+
         # 4. Build personalised health profile from biometrics (#88)
         health_profile = self._resolve_health_profile(payload, goal)
 
