@@ -35,6 +35,9 @@ _DEFAULT_CONFIDENCE = 0.7
 _MIN_CONFIDENCE = 0.6
 # Certains hôtes d'images (CDN, Wikimedia…) rejettent le User-Agent par défaut.
 _IMAGE_HEADERS = {"User-Agent": "HealthAI-Coach/1.0 (nutrition image fetch)"}
+# Le téléchargement de l'image doit échouer vite : une URL morte (IP S3 obsolète,
+# objet absent) ne doit pas bloquer au-delà du timeout du backend appelant.
+_IMAGE_DOWNLOAD_TIMEOUT = 15
 
 
 class OllamaVisionProvider:
@@ -123,7 +126,8 @@ class OllamaVisionProvider:
     async def _fetch_base64(self, image_url: str | None) -> str | None:
         if not image_url:
             return None
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
+        timeout = min(self._timeout, _IMAGE_DOWNLOAD_TIMEOUT)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.get(
                 image_url, headers=_IMAGE_HEADERS, follow_redirects=True
             )
