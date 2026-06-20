@@ -182,6 +182,10 @@ def _fetch_from_backend() -> list[dict[str, Any]]:
             "carbohydrates_g": item.get("carbohydrates_g"),
             "fat_g": item.get("fat_g"),
             "fiber_g": item.get("fiber_g"),
+            "sugar_g": item.get("sugar_g"),
+            "sodium_mg": item.get("sodium_mg"),
+            "cholesterol_mg": item.get("cholesterol_mg"),
+            "meal_type_name": item.get("meal_type_name"),
             "category": item.get("category"),
         }
         for item in items
@@ -192,7 +196,16 @@ def _fetch_from_backend() -> list[dict[str, Any]]:
 def _fetch_from_static() -> list[dict[str, Any]]:
     """Construit le catalogue depuis la table statique embarquée."""
     docs: list[dict[str, Any]] = []
-    for name, (kcal, prot, carb, fat, fib) in _TABLE.items():
+    for name, (
+        kcal,
+        prot,
+        carb,
+        fat,
+        fib,
+        sugar,
+        sodium,
+        cholesterol,
+    ) in _TABLE.items():
         docs.append(
             {
                 "name": name,
@@ -202,6 +215,9 @@ def _fetch_from_static() -> list[dict[str, Any]]:
                 "carbohydrates_g": carb,
                 "fat_g": fat,
                 "fiber_g": fib,
+                "sugar_g": sugar,
+                "sodium_mg": sodium,
+                "cholesterol_mg": cholesterol,
                 "category": "static",
             }
         )

@@ -10,67 +10,69 @@ from __future__ import annotations
 import logging
 import re
 
-from app.contexts.nutrition.domain.models import Macros
+from app.contexts.nutrition.domain.models import FoodMacroTuple, Macros
 
 logger = logging.getLogger(__name__)
 
 # fmt: off
 # key: lowercase token(s) that may appear in a detected food label
-# values: calories (kcal), proteins_g, carbs_g, fats_g, fibers_g  – all per 100 g
-_TABLE: dict[str, tuple[float, float, float, float, float]] = {
-    "poulet":          (165, 31.0,  0.0,  3.6, 0.0),
-    "chicken":         (165, 31.0,  0.0,  3.6, 0.0),
-    "riz":             (130,  2.7, 28.0,  0.3, 0.4),
-    "rice":            (130,  2.7, 28.0,  0.3, 0.4),
-    "saumon":          (208, 20.0,  0.0, 13.0, 0.0),
-    "salmon":          (208, 20.0,  0.0, 13.0, 0.0),
-    "boeuf":           (250, 26.0,  0.0, 16.0, 0.0),
-    "beef":            (250, 26.0,  0.0, 16.0, 0.0),
-    "porc":            (242, 27.0,  0.0, 14.0, 0.0),
-    "pork":            (242, 27.0,  0.0, 14.0, 0.0),
-    "tofu":            ( 76,  8.0,  1.9,  4.8, 0.3),
-    "oeuf":            (155, 13.0,  1.1, 11.0, 0.0),
-    "egg":             (155, 13.0,  1.1, 11.0, 0.0),
-    "lentille":        (116,  9.0, 20.0,  0.4, 8.0),
-    "lentil":          (116,  9.0, 20.0,  0.4, 8.0),
-    "pois":            ( 81,  5.4, 14.0,  0.4, 5.5),
-    "quinoa":          (120,  4.4, 21.0,  1.9, 2.8),
-    "pâte":            (131,  5.0, 25.0,  1.1, 1.8),
-    "pasta":           (131,  5.0, 25.0,  1.1, 1.8),
-    "pain":            (265,  9.0, 49.0,  3.2, 2.7),
-    "bread":           (265,  9.0, 49.0,  3.2, 2.7),
-    "pomme de terre":  ( 77,  2.0, 17.0,  0.1, 2.2),
-    "potato":          ( 77,  2.0, 17.0,  0.1, 2.2),
-    "patate":          ( 86,  1.6, 20.0,  0.1, 3.0),
-    "brocoli":         ( 34,  2.8,  7.0,  0.4, 2.6),
-    "broccoli":        ( 34,  2.8,  7.0,  0.4, 2.6),
-    "carotte":         ( 41,  0.9,  9.6,  0.2, 2.8),
-    "carrot":          ( 41,  0.9,  9.6,  0.2, 2.8),
-    "salade":          ( 15,  1.4,  2.9,  0.2, 1.3),
-    "salad":           ( 15,  1.4,  2.9,  0.2, 1.3),
-    "tomate":          ( 18,  0.9,  3.9,  0.2, 1.2),
-    "tomato":          ( 18,  0.9,  3.9,  0.2, 1.2),
-    "fromage":         (402, 25.0,  1.3, 33.0, 0.0),
-    "cheese":          (402, 25.0,  1.3, 33.0, 0.0),
-    "yaourt":          ( 59,  3.5,  4.7,  3.3, 0.0),
-    "yogurt":          ( 59,  3.5,  4.7,  3.3, 0.0),
-    "lait":            ( 61,  3.2,  4.8,  3.3, 0.0),
-    "milk":            ( 61,  3.2,  4.8,  3.3, 0.0),
-    "avocat":          (160,  2.0,  9.0, 15.0, 6.7),
-    "avocado":         (160,  2.0,  9.0, 15.0, 6.7),
-    "amande":          (579, 21.0, 22.0, 50.0, 12.5),
-    "almond":          (579, 21.0, 22.0, 50.0, 12.5),
-    "huile":           (884,  0.0,  0.0, 100.0, 0.0),
-    "oil":             (884,  0.0,  0.0, 100.0, 0.0),
-    "banane":          ( 89,  1.1, 23.0,  0.3, 2.6),
-    "banana":          ( 89,  1.1, 23.0,  0.3, 2.6),
-    "pomme":           ( 52,  0.3, 14.0,  0.2, 2.4),
-    "apple":           ( 52,  0.3, 14.0,  0.2, 2.4),
+# values: calories (kcal), proteins_g, carbs_g, fats_g, fibers_g, sugar_g,
+# sodium_mg, cholesterol_mg – all per 100 g. Valeurs approximatives (table de
+# repli statique, utilisée seulement si le backend est indisponible).
+_TABLE: dict[str, FoodMacroTuple] = {
+    "poulet":          (165, 31.0,  0.0,  3.6, 0.0, 0.0,  70.0,  85.0),
+    "chicken":         (165, 31.0,  0.0,  3.6, 0.0, 0.0,  70.0,  85.0),
+    "riz":             (130,  2.7, 28.0,  0.3, 0.4, 0.0,   1.0,   0.0),
+    "rice":            (130,  2.7, 28.0,  0.3, 0.4, 0.0,   1.0,   0.0),
+    "saumon":          (208, 20.0,  0.0, 13.0, 0.0, 0.0,  59.0,  55.0),
+    "salmon":          (208, 20.0,  0.0, 13.0, 0.0, 0.0,  59.0,  55.0),
+    "boeuf":           (250, 26.0,  0.0, 16.0, 0.0, 0.0,  55.0,  90.0),
+    "beef":            (250, 26.0,  0.0, 16.0, 0.0, 0.0,  55.0,  90.0),
+    "porc":            (242, 27.0,  0.0, 14.0, 0.0, 0.0,  62.0,  80.0),
+    "pork":            (242, 27.0,  0.0, 14.0, 0.0, 0.0,  62.0,  80.0),
+    "tofu":            ( 76,  8.0,  1.9,  4.8, 0.3, 0.6,   7.0,   0.0),
+    "oeuf":            (155, 13.0,  1.1, 11.0, 0.0, 1.1, 124.0, 372.0),
+    "egg":             (155, 13.0,  1.1, 11.0, 0.0, 1.1, 124.0, 372.0),
+    "lentille":        (116,  9.0, 20.0,  0.4, 8.0, 1.8,   2.0,   0.0),
+    "lentil":          (116,  9.0, 20.0,  0.4, 8.0, 1.8,   2.0,   0.0),
+    "pois":            ( 81,  5.4, 14.0,  0.4, 5.5, 5.7,   5.0,   0.0),
+    "quinoa":          (120,  4.4, 21.0,  1.9, 2.8, 0.9,   7.0,   0.0),
+    "pâte":            (131,  5.0, 25.0,  1.1, 1.8, 0.6,   1.0,   0.0),
+    "pasta":           (131,  5.0, 25.0,  1.1, 1.8, 0.6,   1.0,   0.0),
+    "pain":            (265,  9.0, 49.0,  3.2, 2.7, 5.0, 490.0,   0.0),
+    "bread":           (265,  9.0, 49.0,  3.2, 2.7, 5.0, 490.0,   0.0),
+    "pomme de terre":  ( 77,  2.0, 17.0,  0.1, 2.2, 0.8,   6.0,   0.0),
+    "potato":          ( 77,  2.0, 17.0,  0.1, 2.2, 0.8,   6.0,   0.0),
+    "patate":          ( 86,  1.6, 20.0,  0.1, 3.0, 4.2,  55.0,   0.0),
+    "brocoli":         ( 34,  2.8,  7.0,  0.4, 2.6, 1.7,  33.0,   0.0),
+    "broccoli":        ( 34,  2.8,  7.0,  0.4, 2.6, 1.7,  33.0,   0.0),
+    "carotte":         ( 41,  0.9,  9.6,  0.2, 2.8, 4.7,  69.0,   0.0),
+    "carrot":          ( 41,  0.9,  9.6,  0.2, 2.8, 4.7,  69.0,   0.0),
+    "salade":          ( 15,  1.4,  2.9,  0.2, 1.3, 0.8,  28.0,   0.0),
+    "salad":           ( 15,  1.4,  2.9,  0.2, 1.3, 0.8,  28.0,   0.0),
+    "tomate":          ( 18,  0.9,  3.9,  0.2, 1.2, 2.6,   5.0,   0.0),
+    "tomato":          ( 18,  0.9,  3.9,  0.2, 1.2, 2.6,   5.0,   0.0),
+    "fromage":         (402, 25.0,  1.3, 33.0, 0.0, 0.5, 621.0, 105.0),
+    "cheese":          (402, 25.0,  1.3, 33.0, 0.0, 0.5, 621.0, 105.0),
+    "yaourt":          ( 59,  3.5,  4.7,  3.3, 0.0, 4.7,  36.0,  13.0),
+    "yogurt":          ( 59,  3.5,  4.7,  3.3, 0.0, 4.7,  36.0,  13.0),
+    "lait":            ( 61,  3.2,  4.8,  3.3, 0.0, 4.8,  43.0,  10.0),
+    "milk":            ( 61,  3.2,  4.8,  3.3, 0.0, 4.8,  43.0,  10.0),
+    "avocat":          (160,  2.0,  9.0, 15.0, 6.7, 0.7,   7.0,   0.0),
+    "avocado":         (160,  2.0,  9.0, 15.0, 6.7, 0.7,   7.0,   0.0),
+    "amande":          (579, 21.0, 22.0, 50.0, 12.5, 4.4,   1.0,   0.0),
+    "almond":          (579, 21.0, 22.0, 50.0, 12.5, 4.4,   1.0,   0.0),
+    "huile":           (884,  0.0,  0.0, 100.0, 0.0, 0.0,   0.0,   0.0),
+    "oil":             (884,  0.0,  0.0, 100.0, 0.0, 0.0,   0.0,   0.0),
+    "banane":          ( 89,  1.1, 23.0,  0.3, 2.6, 12.2,   1.0,   0.0),
+    "banana":          ( 89,  1.1, 23.0,  0.3, 2.6, 12.2,   1.0,   0.0),
+    "pomme":           ( 52,  0.3, 14.0,  0.2, 2.4, 10.4,   1.0,   0.0),
+    "apple":           ( 52,  0.3, 14.0,  0.2, 2.4, 10.4,   1.0,   0.0),
 }
 # fmt: on
 
 # Per-100g default for unrecognised foods
-_DEFAULT: tuple[float, float, float, float, float] = (150.0, 8.0, 18.0, 5.0, 1.5)
+_DEFAULT: FoodMacroTuple = (150.0, 8.0, 18.0, 5.0, 1.5, 5.0, 50.0, 10.0)
 
 # Assumed serving size in grams for a single detected food item
 DEFAULT_SERVING_G: float = 150.0
@@ -118,13 +120,12 @@ def is_food_label(label: str) -> bool:
 class NutritionLookupService:
     """Estimates macronutrients from a list of food names using an embedded table."""
 
-    def lookup(
-        self, food_name: str
-    ) -> tuple[tuple[float, float, float, float, float], bool]:
+    def lookup(self, food_name: str) -> tuple[FoodMacroTuple, bool]:
         """Return ``(macros_per_100g, estimated)``.
 
         *estimated* is ``True`` when the food is not found in the reference table.
-        macros_per_100g = (calories, proteins_g, carbs_g, fats_g, fibers_g).
+        macros_per_100g = (calories, proteins_g, carbs_g, fats_g, fibers_g,
+        sugar_g, sodium_mg, cholesterol_mg).
         """
         normalised = re.sub(r"\s+", " ", food_name.lower().strip())
 
@@ -155,7 +156,7 @@ class NutritionLookupService:
             if estimated:
                 any_estimated = True
             factor = serving_g / 100.0
-            for i, val in enumerate(per_100g):
+            for i, val in enumerate(per_100g[:5]):
                 totals[i] += val * factor
 
         return Macros(
@@ -171,6 +172,6 @@ class NutritionLookupService:
         """Implement NutritionLookupPort — delegates to the module-level function."""
         return is_food_label(label)
 
-    async def get_catalog(self) -> dict[str, tuple[float, float, float, float, float]]:
+    async def get_catalog(self) -> dict[str, FoodMacroTuple]:
         """Return the static embedded catalog."""
         return dict(_TABLE)

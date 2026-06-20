@@ -21,7 +21,7 @@ import re
 import time
 import unicodedata
 
-from app.contexts.nutrition.domain.models import Macros
+from app.contexts.nutrition.domain.models import FoodMacroTuple, Macros
 from app.contexts.nutrition.infrastructure.nutrition_lookup import (
     _DEFAULT,
     DEFAULT_SERVING_G,
@@ -35,8 +35,9 @@ logger = logging.getLogger(__name__)
 _CACHE_TTL_SECONDS = 600  # 10 minutes
 _BACKOFF_TTL_SECONDS = 30  # ré-essai après 30 s en cas d'échec
 
-# Macros = (calories, proteins_g, carbs_g, fats_g, fibers_g) pour 100 g
-_Macro5 = tuple[float, float, float, float, float]
+# Macros = (calories, proteins_g, carbs_g, fats_g, fibers_g, sugar_g,
+# sodium_mg, cholesterol_mg) pour 100 g
+_Macro5 = FoodMacroTuple
 
 
 def _normalise(value: str) -> str:
@@ -75,7 +76,7 @@ class MongoNutritionLookupService:
             per_100g, estimated = self._lookup(food)
             any_estimated = any_estimated or estimated
             factor = serving_g / 100.0
-            for i, val in enumerate(per_100g):
+            for i, val in enumerate(per_100g[:5]):
                 totals[i] += val * factor
 
         return Macros(
@@ -171,6 +172,9 @@ class MongoNutritionLookupService:
             "carbohydrates_g": 1,
             "fat_g": 1,
             "fiber_g": 1,
+            "sugar_g": 1,
+            "sodium_mg": 1,
+            "cholesterol_mg": 1,
         }
 
         items = [item async for item in db[col.NUTRITION_FOODS].find({}, projection)]
@@ -190,6 +194,9 @@ class MongoNutritionLookupService:
                 float(item.get("carbohydrates_g") or 0),
                 float(item.get("fat_g") or 0),
                 float(item.get("fiber_g") or 0),
+                float(item.get("sugar_g") or 0),
+                float(item.get("sodium_mg") or 0),
+                float(item.get("cholesterol_mg") or 0),
             )
 
         new_table: dict[str, _Macro5] = {}

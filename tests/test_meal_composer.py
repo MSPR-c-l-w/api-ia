@@ -8,23 +8,23 @@ from app.contexts.nutrition.domain.meal_composer import (
     _classify,
     _score_meal,
 )
-from app.contexts.nutrition.domain.models import HealthProfile, Macros
+from app.contexts.nutrition.domain.models import FoodMacroTuple, HealthProfile, Macros
 
 # Petit catalogue de test
-_CATALOG: dict[str, tuple[float, float, float, float, float]] = {
-    "poulet grillé (150g)": (248, 46.5, 0.0, 5.4, 0.0),
-    "riz basmati (100g)": (130, 2.7, 28.0, 0.3, 0.4),
-    "brocoli cuit (100g)": (35, 2.9, 7.2, 0.4, 2.6),
-    "yaourt nature (150g)": (88, 5.3, 7.1, 5.0, 0.0),
-    "flocons d'avoine (50g)": (190, 6.5, 33.5, 3.3, 4.1),
-    "saumon (150g)": (312, 30.0, 0.0, 19.5, 0.0),
-    "quinoa (100g)": (120, 4.4, 21.0, 1.9, 2.8),
-    "lentilles (100g)": (116, 9.0, 20.0, 0.4, 8.0),
-    "tomate (100g)": (18, 0.9, 3.9, 0.2, 1.2),
-    "pomme (1 fruit)": (81, 0.4, 21.6, 0.2, 3.7),
-    "amandes (30g)": (174, 6.3, 6.1, 15.1, 3.8),
-    "tofu (100g)": (76, 8.0, 1.9, 4.8, 0.3),
-    "patate douce (150g)": (129, 2.4, 30.0, 0.2, 4.5),
+_CATALOG: dict[str, FoodMacroTuple] = {
+    "poulet grillé (150g)": (248, 46.5, 0.0, 5.4, 0.0, 0, 0, 0),
+    "riz basmati (100g)": (130, 2.7, 28.0, 0.3, 0.4, 0, 0, 0),
+    "brocoli cuit (100g)": (35, 2.9, 7.2, 0.4, 2.6, 0, 0, 0),
+    "yaourt nature (150g)": (88, 5.3, 7.1, 5.0, 0.0, 0, 0, 0),
+    "flocons d'avoine (50g)": (190, 6.5, 33.5, 3.3, 4.1, 0, 0, 0),
+    "saumon (150g)": (312, 30.0, 0.0, 19.5, 0.0, 0, 0, 0),
+    "quinoa (100g)": (120, 4.4, 21.0, 1.9, 2.8, 0, 0, 0),
+    "lentilles (100g)": (116, 9.0, 20.0, 0.4, 8.0, 0, 0, 0),
+    "tomate (100g)": (18, 0.9, 3.9, 0.2, 1.2, 0, 0, 0),
+    "pomme (1 fruit)": (81, 0.4, 21.6, 0.2, 3.7, 0, 0, 0),
+    "amandes (30g)": (174, 6.3, 6.1, 15.1, 3.8, 0, 0, 0),
+    "tofu (100g)": (76, 8.0, 1.9, 4.8, 0.3, 0, 0, 0),
+    "patate douce (150g)": (129, 2.4, 30.0, 0.2, 4.5, 0, 0, 0),
 }
 
 

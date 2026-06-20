@@ -35,6 +35,14 @@ class Macros:
     estimated: bool = False
 
 
+# Catalogue d'aliments : (calories, proteines_g, glucides_g, lipides_g,
+# fibres_g, sucres_g, sodium_mg, cholesterol_mg) pour 100 g. Les 3 derniers
+# champs alimentent MealTypeModel (classification du créneau de repas) ;
+# ils ne sont pas utilisés par MealComposerService._score_meal (5 premiers
+# champs seulement, alignés sur HealthProfile).
+FoodMacroTuple = tuple[float, float, float, float, float, float, float, float]
+
+
 @dataclass
 class NutrientDetail:
     name: str

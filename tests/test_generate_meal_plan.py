@@ -53,14 +53,14 @@ def _seven_days_json():
 
 def _rich_catalog():
     return {
-        "poulet grillé": (165, 31, 0, 4, 0),
-        "riz complet": (130, 3, 28, 1, 2),
-        "saumon": (208, 20, 0, 13, 0),
-        "brocoli": (34, 3, 7, 0, 3),
-        "flocons d'avoine": (380, 13, 67, 7, 10),
-        "yaourt grec": (59, 10, 4, 0, 0),
-        "amandes": (579, 21, 22, 50, 12),
-        "lentilles": (116, 9, 20, 0, 8),
+        "poulet grillé": (165, 31, 0, 4, 0, 0, 0, 0),
+        "riz complet": (130, 3, 28, 1, 2, 0, 0, 0),
+        "saumon": (208, 20, 0, 13, 0, 0, 0, 0),
+        "brocoli": (34, 3, 7, 0, 3, 0, 0, 0),
+        "flocons d'avoine": (380, 13, 67, 7, 10, 0, 0, 0),
+        "yaourt grec": (59, 10, 4, 0, 0, 0, 0, 0),
+        "amandes": (579, 21, 22, 50, 12, 0, 0, 0),
+        "lentilles": (116, 9, 20, 0, 8, 0, 0, 0),
     }
 
 
