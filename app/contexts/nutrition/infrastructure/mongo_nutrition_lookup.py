@@ -157,6 +157,7 @@ class MongoNutritionLookupService:
         projection = {
             "name": 1,
             "aliases": 1,
+            "category": 1,
             "calories_kcal": 1,
             "protein_g": 1,
             "carbohydrates_g": 1,
@@ -164,24 +165,48 @@ class MongoNutritionLookupService:
             "fiber_g": 1,
         }
 
-        new_table: dict[str, _Macro5] = {}
-        async for item in db[col.NUTRITION_FOODS].find({}, projection):
-            name = _normalise(item.get("name") or "")
-            if not name:
-                continue
-            macros: _Macro5 = (
+        items = [item async for item in db[col.NUTRITION_FOODS].find({}, projection)]
+        if not items:
+            raise RuntimeError("collection nutrition_foods vide")
+
+        # Priorité (de la plus faible à la plus forte ; le dernier écrit gagne) :
+        #   alias statique < nom statique < alias des tables backend < nom backend.
+        # Les vraies données (ETL backend) priment ainsi sur la table de secours.
+        static = [it for it in items if it.get("category") == "static"]
+        backend = [it for it in items if it.get("category") != "static"]
+
+        def macros_of(item: dict) -> _Macro5:
+            return (
                 float(item.get("calories_kcal") or 0),
                 float(item.get("protein_g") or 0),
                 float(item.get("carbohydrates_g") or 0),
                 float(item.get("fat_g") or 0),
                 float(item.get("fiber_g") or 0),
             )
-            new_table[name] = macros
-            # Les alias pointent vers les mêmes macros (sans écraser un nom réel).
-            for alias in item.get("aliases") or []:
-                alias_norm = _normalise(str(alias))
-                if alias_norm:
-                    new_table.setdefault(alias_norm, macros)
+
+        new_table: dict[str, _Macro5] = {}
+
+        def put_aliases(group: list[dict]) -> None:
+            for item in group:
+                macros = macros_of(item)
+                for alias in item.get("aliases") or []:
+                    alias_norm = _normalise(str(alias))
+                    if alias_norm:
+                        new_table[alias_norm] = macros
+
+        def put_names(group: list[dict]) -> None:
+            for item in group:
+                name = _normalise(item.get("name") or "")
+                if name:
+                    new_table[name] = macros_of(item)
+
+        for step in (
+            lambda: put_aliases(static),
+            lambda: put_names(static),
+            lambda: put_aliases(backend),
+            lambda: put_names(backend),
+        ):
+            step()
 
         if not new_table:
             raise RuntimeError("collection nutrition_foods vide")

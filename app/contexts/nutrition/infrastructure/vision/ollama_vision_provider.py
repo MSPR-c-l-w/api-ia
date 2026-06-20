@@ -38,6 +38,8 @@ _IMAGE_HEADERS = {"User-Agent": "HealthAI-Coach/1.0 (nutrition image fetch)"}
 # Le téléchargement de l'image doit échouer vite : une URL morte (IP S3 obsolète,
 # objet absent) ne doit pas bloquer au-delà du timeout du backend appelant.
 _IMAGE_DOWNLOAD_TIMEOUT = 15
+# Durée de maintien du modèle en RAM côté Ollama entre deux requêtes.
+_KEEP_ALIVE = "30m"
 
 
 class OllamaVisionProvider:
@@ -74,6 +76,10 @@ class OllamaVisionProvider:
                         "model": self._model,
                         "stream": False,
                         "format": "json",
+                        # Garde le modèle chargé en RAM entre deux photos : sur CPU,
+                        # un rechargement à froid (~minutes) dépasserait le timeout
+                        # du backend appelant.
+                        "keep_alive": _KEEP_ALIVE,
                         "messages": [
                             {
                                 "role": "user",

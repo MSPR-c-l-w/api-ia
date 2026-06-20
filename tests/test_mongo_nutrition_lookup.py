@@ -44,10 +44,11 @@ class _FakeDB:
         return self._coll
 
 
-def _doc(name, kcal=100, p=10, c=20, f=5, fib=3, aliases=None):
+def _doc(name, kcal=100, p=10, c=20, f=5, fib=3, aliases=None, category=None):
     return {
         "name": name,
         "aliases": aliases or [],
+        "category": category,
         "calories_kcal": kcal,
         "protein_g": p,
         "carbohydrates_g": c,
@@ -125,6 +126,27 @@ async def test_accent_insensitive_match(monkeypatch):
 
     assert macros.estimated is False
     assert macros.calories == 131
+
+
+async def test_backend_data_takes_precedence_over_static(monkeypatch):
+    # Même aliment des deux côtés : la table backend (ETL) doit primer.
+    _patch_mongo(
+        monkeypatch,
+        [
+            _doc("fromage", kcal=402, category="static"),
+            _doc(
+                "Fromage blanc 0% 100g",
+                kcal=45,
+                aliases=["fromage"],
+                category="Produits laitiers",
+            ),
+        ],
+    )
+    service = MongoNutritionLookupService()
+
+    macros = await service.compute_macros(["fromage"], serving_g=100.0)
+
+    assert macros.calories == 45  # valeur de la table backend, pas la statique (402)
 
 
 async def test_alias_resolves_to_same_macros(monkeypatch):

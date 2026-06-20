@@ -15,7 +15,9 @@ Usage:
 
 import asyncio
 import os
+import re
 import sys
+import unicodedata
 from typing import Any
 
 import httpx
@@ -31,6 +33,107 @@ from app.contexts.nutrition.infrastructure.nutrition_lookup import _TABLE  # noq
 from app.shared.infrastructure import collections as col  # noqa: E402
 
 _PAGE_SIZE = 100
+
+# ---------------------------------------------------------------------------
+# Génération d'alias : faire correspondre les noms verbeux des tables backend
+# (« Brocolis vapeur 100g ») aux labels simples des modèles de vision
+# (« broccoli »). Le lookup MongoDB résout ensuite via le champ ``aliases``.
+# ---------------------------------------------------------------------------
+
+# Tokens de quantité / préparation à retirer pour isoler le mot-aliment.
+_NOISE = re.compile(r"\b\d+\s*(?:g|kg|ml|cl|l|kcal|%)\b|\bx\s*\d+\b|\b\d+\b|%")
+_PREP_WORDS = {
+    "vapeur",
+    "grille",
+    "grillee",
+    "grilles",
+    "grillees",
+    "cuit",
+    "cuite",
+    "cuits",
+    "cru",
+    "crue",
+    "crus",
+    "brouille",
+    "brouilles",
+    "nature",
+    "frais",
+    "fraiche",
+    "bio",
+    "basmati",
+    "verte",
+    "vert",
+    "blanc",
+    "blanche",
+    "poele",
+    "poelee",
+    "roti",
+    "rotie",
+    "mixte",
+    "entier",
+    "entiere",
+    "demi",
+    "ecreme",
+    "ecremee",
+    "de",
+    "d",
+    "l",
+    "a",
+    "au",
+    "aux",
+    "en",
+}
+# Mot-aliment (normalisé, singulier) -> variantes (FR + EN courants en vision).
+_LEXICON = {
+    "banane": ["banana"],
+    "brocoli": ["broccoli", "brocolis"],
+    "avoine": ["oats", "oatmeal", "porridge", "flocons"],
+    "fromage": ["cheese", "cottage cheese"],
+    "oeuf": ["egg", "eggs", "scrambled eggs"],
+    "pomme": ["apple"],
+    "poulet": ["chicken"],
+    "riz": ["rice"],
+    "salade": ["salad", "lettuce", "greens"],
+    "saumon": ["salmon", "fish"],
+    # Extensions courantes pour de futurs imports ETL.
+    "boeuf": ["beef"],
+    "porc": ["pork"],
+    "pain": ["bread"],
+    "pates": ["pasta"],
+    "tomate": ["tomato"],
+    "carotte": ["carrot"],
+    "yaourt": ["yogurt"],
+    "lait": ["milk"],
+    "thon": ["tuna"],
+    "dinde": ["turkey"],
+    "jambon": ["ham"],
+}
+
+
+def _normalise(value: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", value.lower()).replace("'", " ")
+    no_accents = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", no_accents).strip()
+
+
+def _singular(word: str) -> str:
+    return word[:-1] if len(word) > 3 and word.endswith("s") else word
+
+
+def build_aliases(name: str) -> list[str]:
+    """Dérive des alias (FR simplifié + EN) depuis un nom de table verbeux."""
+    core = _NOISE.sub(" ", _normalise(name))
+    words = [w for w in core.split() if w and w not in _PREP_WORDS]
+    aliases: set[str] = set()
+    if words:
+        aliases.add(" ".join(words))  # noyau complet sans quantité/préparation
+    for word in words:
+        singular = _singular(word)
+        aliases.update({word, singular})
+        aliases.update(_LEXICON.get(singular, []))
+        aliases.update(_LEXICON.get(word, []))
+    aliases.discard("")
+    return sorted(aliases)
 
 
 def _fetch_from_backend() -> list[dict[str, Any]]:
@@ -73,6 +176,7 @@ def _fetch_from_backend() -> list[dict[str, Any]]:
     return [
         {
             "name": item.get("name"),
+            "aliases": build_aliases(item.get("name") or ""),
             "calories_kcal": item.get("calories_kcal"),
             "protein_g": item.get("protein_g"),
             "carbohydrates_g": item.get("carbohydrates_g"),
@@ -92,6 +196,7 @@ def _fetch_from_static() -> list[dict[str, Any]]:
         docs.append(
             {
                 "name": name,
+                "aliases": build_aliases(name),
                 "calories_kcal": kcal,
                 "protein_g": prot,
                 "carbohydrates_g": carb,
