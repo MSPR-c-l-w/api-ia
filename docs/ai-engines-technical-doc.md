@@ -167,38 +167,47 @@ l'exercice est ≥ 4/5, `0` sinon.
 4. Évaluation sur le test set (hold-out, jamais vu à l'entraînement).
 5. Sauvegarde du modèle (`joblib`) + rapport (`docs/model-training-report.md`).
 
-**Résultats de la dernière exécution** (1650 échantillons réels — `scripts/seed_real_workout_feedback.py`,
-120 profils/programmes/feedbacks générés bout-en-bout via les vrais endpoints HTTP et
-le vrai catalogue backend `Exercise` — + 1800 synthétiques, 3450 au total) :
+**Résultats de la dernière exécution** (7077 échantillons réels — `scripts/seed_real_workout_feedback.py`,
+521 profils/programmes/feedbacks générés bout-en-bout via les vrais endpoints HTTP et
+le vrai catalogue backend `Exercise` (885 exercices), dont au moins un programme
+réellement testé et noté par un humain pendant cette session — + 1800 synthétiques,
+8877 au total) :
 
 | learning_rate | F1 (CV 5-fold) |
 |---|---|
-| 0.01 | 0.486 |
-| 0.05 | 0.505 |
-| 0.1 | 0.515 |
-| 0.2 | 0.517 |
-| **0.3 (retenu)** | **0.517** |
+| 0.01 | 0.795 |
+| **0.05 (retenu)** | **0.796** |
+| 0.1 | 0.793 |
+| 0.2 | 0.787 |
+| 0.3 | 0.792 |
 
-| Métrique (test set, 690 échantillons) | Valeur |
+| Métrique (test set, 1776 échantillons) | Valeur |
 |---|---|
-| Exactitude | 0.771 |
-| Précision | 0.776 |
-| Rappel | 0.427 |
-| F1-score | 0.551 |
-| Taux de faux positifs | 0.061 |
-| Taux de faux négatifs | 0.573 |
-| R² (probabilité prédite vs note normalisée) | 0.285 |
+| Exactitude | 0.726 |
+| Précision | 0.729 |
+| Rappel | 0.876 |
+| F1-score | 0.796 |
+| Taux de faux positifs | 0.507 |
+| Taux de faux négatifs | 0.124 |
+| R² (probabilité prédite vs note normalisée) | 0.253 |
 
-Importance apprise des features : `n_contraindications` (0.28) ≈ `objective_match`
-(0.27) ≈ `equipment_available` (0.21) > `level_diff` (0.12) — résultats plus modestes
-qu'avec le dataset 100 % synthétique précédent (F1 ≈ 0.79), ce qui est attendu : le
-label réel (note du programme entier reportée sur chaque exercice individuel) est un
-signal de supervision beaucoup plus bruité que la vérité terrain par exercice du
-générateur synthétique, et le catalogue réel (885 exercices backend) est bien plus
-hétérogène que les 43 exercices curés du fichier statique. Rappel plus faible (0.43) :
-le modèle est conservateur, il rate plus de "satisfaisant" qu'il n'en invente — cohérent
-avec le FPR très bas (0.06). Détail complet : `docs/model-training-report.md`
-(régénéré à chaque entraînement).
+Importance apprise des features : `objective_match` (0.62) ≫ `equipment_available`
+(0.17) > `level_diff` (0.11) — confirme l'objectif comme facteur largement dominant,
+cohérent avec le poids 0.40 de l'heuristique d'origine.
+
+**Note méthodologique sur le seuil de satisfaction** (`_SATISFIED_THRESHOLD`,
+`ml_scoring_model.py`) : une première analyse sur un petit échantillon (120
+feedbacks, notes {2,3,4} seulement) avait suggéré d'abaisser le seuil de 4 à 3 pour
+rééquilibrer les classes. Sur un échantillon plus large (521 feedbacks, notes
+{2:30, 3:137, 4:211, 5:143}), ce seuil à 3 s'est révélé être une **sur-correction** :
+94 % des échantillons devenaient "satisfaisant", rendant la tâche triviale (F1 gonflé
+à 0.96 en prédisant presque toujours positif). Le seuil à 4 a été conservé (~61 %
+positif sur le test set), un déséquilibre plus sain. Ceci illustre un piège classique
+de l'apprentissage supervisé : le seuil de binarisation d'un label continu est un choix
+de modélisation, pas un paramètre que l'entraînement optimise — il doit être validé
+empiriquement sur un échantillon représentatif avant d'être figé.
+
+Détail complet : `docs/model-training-report.md` (régénéré à chaque entraînement).
 
 ---
 

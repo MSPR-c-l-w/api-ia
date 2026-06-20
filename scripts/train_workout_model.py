@@ -225,9 +225,11 @@ Label binaire : `satisfait = 1` si note réelle/simulée ≥ 4 (sur 5), `0` sino
 Échantillons réels chargés depuis MongoDB (`workout_feedbacks` ⨝ `workout_programs`
 ⨝ `user_fitness_profiles`), avec les exercices résolus depuis le **vrai catalogue
 backend** (`BackendExerciseLookupService`, table `Exercise` ETL GitHub JSON), pas
-le fichier statique `exercises_catalog.py`. Générés via `scripts/seed_real_workout_feedback.py`
-(entités de domaine + endpoints HTTP réels — seule la note de satisfaction est
-simulée, faute de testeurs humains à ce stade).
+le fichier statique `exercises_catalog.py`. Majoritairement générés via
+`scripts/seed_real_workout_feedback.py` (entités de domaine + endpoints HTTP réels,
+note de satisfaction simulée par compatibilité + bruit, faute de volume de testeurs
+humains), complétés par au moins un programme réellement généré et noté par un
+humain pendant cette session (mêmes endpoints, note authentique).
 
 ## 2. Balayage du taux d'apprentissage (learning_rate)
 

@@ -36,6 +36,12 @@ DEFAULT_MODEL_PATH = (
 )
 
 _SATISFIED_THRESHOLD = 4  # rating >= 4 => exercice "satisfaisant" (label positif)
+# Testé à 3 après une première analyse sur un petit échantillon (120
+# feedbacks, distribution {2,3,4} sans note 5) qui semblait diluer la classe
+# positive. Sur un échantillon plus large (521 feedbacks, distribution
+# {2:30, 3:137, 4:211, 5:143}), le seuil à 3 classe 94% des échantillons en
+# "satisfaisant" — sur-correction qui rend la tâche triviale (F1 gonflé
+# artificiellement). Le seuil à 4 (~68% positif) reste le plus défendable.
 
 
 def samples_to_xy(samples: list[Sample]) -> tuple[np.ndarray, np.ndarray]:
