@@ -9,3 +9,6 @@ async def ensure_indexes(database: AsyncIOMotorDatabase) -> None:
     await database[col.USER_FITNESS_PROFILES].create_index("userId")
     await database[col.WORKOUT_FEEDBACKS].create_index("userId")
     await database[col.WORKOUT_FEEDBACKS].create_index("programId")
+    # Catalogue d'aliments servant la détection nutrition (clé de recherche = name)
+    await database[col.NUTRITION_FOODS].create_index("name", unique=True)
+    await database[col.NUTRITION_FOODS].create_index("aliases")

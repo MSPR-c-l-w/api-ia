@@ -77,12 +77,15 @@ async def test_ensure_indexes_calls_create_index():
     profiles.create_index = AsyncMock()
     feedbacks = MagicMock()
     feedbacks.create_index = AsyncMock()
+    foods = MagicMock()
+    foods.create_index = AsyncMock()
 
     db = MagicMock()
     db.__getitem__.side_effect = lambda name: {
         col.WORKOUT_PROGRAMS: programs,
         col.USER_FITNESS_PROFILES: profiles,
         col.WORKOUT_FEEDBACKS: feedbacks,
+        col.NUTRITION_FOODS: foods,
     }[name]
 
     await ensure_indexes(db)
@@ -90,3 +93,5 @@ async def test_ensure_indexes_calls_create_index():
     programs.create_index.assert_awaited_once_with("userId")
     profiles.create_index.assert_awaited_once_with("userId")
     assert feedbacks.create_index.await_count == 2
+    foods.create_index.assert_any_await("name", unique=True)
+    assert foods.create_index.await_count == 2

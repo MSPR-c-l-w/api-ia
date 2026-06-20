@@ -12,6 +12,7 @@ from app.contexts.nutrition.presentation.schemas import (
     MealPlanResponse,
     NutritionAnalysisRequest,
     NutritionAnalysisResponse,
+    PhotoAnalysisResponse,
 )
 from app.contexts.workout.presentation.schemas import (
     WorkoutFeedbackRequest,
@@ -45,6 +46,7 @@ def build_openapi_schema() -> dict[str, Any]:
         NutritionAnalysisResponse,
         MealPlanRequest,
         MealPlanResponse,
+        PhotoAnalysisResponse,
         WorkoutProgramRequest,
         WorkoutProgramResponse,
         WorkoutFeedbackRequest,
@@ -122,6 +124,36 @@ def build_openapi_schema() -> dict[str, Any]:
                                 "Tous les providers vision sont indisponibles. "
                                 "Le service répond en mode stub si les providers IA sont absents."
                             ),
+                        },
+                    },
+                },
+            },
+            "/ai/nutrition/analyze-photo": {
+                "post": {
+                    "tags": ["nutrition"],
+                    "summary": "Détecter les aliments d'un plat (contrat backend)",
+                    "description": (
+                        "Reçoit l'URL d'une photo de repas, détecte les aliments via "
+                        "le provider vision, résout les macros depuis le catalogue "
+                        "MongoDB (`nutrition_foods`, fallback table statique) et renvoie "
+                        "le contrat `FoodAnalysisResult` consommé par le backend NestJS. "
+                        "Authentification inter-services via `X-API-Key`."
+                    ),
+                    "security": [{"ApiKeyAuth": []}],
+                    "requestBody": {
+                        "required": True,
+                        "content": json_content("NutritionAnalysisRequest"),
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Aliments reconnus + macros agrégées",
+                            "content": json_content("PhotoAnalysisResponse"),
+                        },
+                        "401": {
+                            "description": "Clé API invalide ou absente (`INVALID_API_KEY`)"
+                        },
+                        "422": {
+                            "description": "Corps de requête invalide (validation Pydantic)"
                         },
                     },
                 },

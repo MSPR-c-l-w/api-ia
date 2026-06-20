@@ -98,6 +98,48 @@
         }
       }
     },
+    "/ai/nutrition/analyze-photo": {
+      "post": {
+        "tags": [
+          "nutrition"
+        ],
+        "summary": "Détecter les aliments d'un plat (contrat backend)",
+        "description": "Reçoit l'URL d'une photo de repas, détecte les aliments via le provider vision, résout les macros depuis le catalogue MongoDB (`nutrition_foods`, fallback table statique) et renvoie le contrat `FoodAnalysisResult` consommé par le backend NestJS. Authentification inter-services via `X-API-Key`.",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NutritionAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Aliments reconnus + macros agrégées",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoAnalysisResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Clé API invalide ou absente (`INVALID_API_KEY`)"
+          },
+          "422": {
+            "description": "Corps de requête invalide (validation Pydantic)"
+          }
+        }
+      }
+    },
     "/ai/nutrition/meal-plan": {
       "post": {
         "tags": [
@@ -678,9 +720,27 @@
           "heightCm": 168.0,
           "physicalActivityLevel": "lightly_active",
           "userGoal": "perte_de_poids",
+          "userId": 42,
           "weightKg": 70.0
         },
         "properties": {
+          "userId": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Identifiant utilisateur (FK logique vers User.id NestJS) — si fourni, la recommandation est persistée en MongoDB",
+            "examples": [
+              42
+            ],
+            "title": "Userid"
+          },
           "userGoal": {
             "description": "Objectif nutritionnel de l'utilisateur",
             "examples": [
@@ -920,6 +980,144 @@
         "title": "DailyMealPlan",
         "type": "object"
       },
+      "PhotoAnalysisResponse": {
+        "description": "Réponse de ``POST /ai/nutrition/analyze-photo``.\n\nContrat strictement aligné sur ``FoodAnalysisResult`` du backend NestJS\n(``src/ai/interfaces/food-analysis.interface.ts``).",
+        "example": {
+          "alimentsDetectes": [
+            {
+              "confidence": 0.91,
+              "name": "poulet",
+              "quantityG": 150.0
+            },
+            {
+              "confidence": 0.88,
+              "name": "riz",
+              "quantityG": 150.0
+            }
+          ],
+          "imageUrl": "https://example.com/meal.jpg",
+          "macros": {
+            "calories": 442,
+            "carbsG": 42.6,
+            "fatG": 5.9,
+            "proteinG": 50.6
+          },
+          "modelStatus": "vision_stub",
+          "suggestions": [
+            "Repas équilibré pour un objectif d'équilibre."
+          ]
+        },
+        "properties": {
+          "imageUrl": {
+            "description": "URL de la photo analysée",
+            "title": "Imageurl",
+            "type": "string"
+          },
+          "alimentsDetectes": {
+            "description": "Aliments reconnus dans le plat",
+            "items": {
+              "$ref": "#/components/schemas/PhotoDetectedFood"
+            },
+            "title": "Alimentsdetectes",
+            "type": "array"
+          },
+          "macros": {
+            "$ref": "#/components/schemas/PhotoMacros",
+            "description": "Macros estimées du plat"
+          },
+          "suggestions": {
+            "description": "Conseils nutritionnels générés",
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "modelStatus": {
+            "description": "État du modèle de détection",
+            "title": "Modelstatus",
+            "type": "string"
+          }
+        },
+        "required": [
+          "imageUrl",
+          "alimentsDetectes",
+          "macros",
+          "suggestions",
+          "modelStatus"
+        ],
+        "title": "PhotoAnalysisResponse",
+        "type": "object"
+      },
+      "PhotoDetectedFood": {
+        "description": "Aliment reconnu sur la photo — format consommé par le backend NestJS.",
+        "properties": {
+          "name": {
+            "description": "Nom de l'aliment reconnu (issu du catalogue)",
+            "title": "Name",
+            "type": "string"
+          },
+          "quantityG": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Quantité estimée pour cet aliment (g)",
+            "title": "Quantityg"
+          },
+          "confidence": {
+            "description": "Score de confiance de la détection",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Confidence",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "confidence"
+        ],
+        "title": "PhotoDetectedFood",
+        "type": "object"
+      },
+      "PhotoMacros": {
+        "description": "Macros agrégées du plat — format consommé par le backend NestJS.",
+        "properties": {
+          "calories": {
+            "description": "Calories totales estimées (kcal)",
+            "title": "Calories",
+            "type": "number"
+          },
+          "proteinG": {
+            "description": "Protéines (g)",
+            "title": "Proteing",
+            "type": "number"
+          },
+          "carbsG": {
+            "description": "Glucides (g)",
+            "title": "Carbsg",
+            "type": "number"
+          },
+          "fatG": {
+            "description": "Lipides (g)",
+            "title": "Fatg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "calories",
+          "proteinG",
+          "carbsG",
+          "fatG"
+        ],
+        "title": "PhotoMacros",
+        "type": "object"
+      },
       "WorkoutProgramRequest": {
         "example": {
           "limitations": [
@@ -1124,6 +1322,22 @@
             ],
             "title": "Id",
             "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Nom lisible de l'exercice",
+            "examples": [
+              "Pont fessier"
+            ],
+            "title": "Name"
           },
           "sets": {
             "anyOf": [
