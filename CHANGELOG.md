@@ -2,6 +2,56 @@
 
 <!-- version list -->
 
+## v0.2.0 (2026-06-20)
+
+### Bug Fixes
+
+- **nutrition**: Robustesse OllamaVisionProvider (téléchargement image + plancher de confiance)
+  ([#26](https://github.com/MSPR-c-l-w/api-ia/pull/26),
+  [`076f490`](https://github.com/MSPR-c-l-w/api-ia/commit/076f49002ceb6b3cb1afdefe7e6d5cb49e30c35a))
+
+- **nutrition**: Timeout court dédié au téléchargement d'image (OllamaVisionProvider)
+  ([#26](https://github.com/MSPR-c-l-w/api-ia/pull/26),
+  [`076f490`](https://github.com/MSPR-c-l-w/api-ia/commit/076f49002ceb6b3cb1afdefe7e6d5cb49e30c35a))
+
+### Chores
+
+- Add .coverage data file ([#25](https://github.com/MSPR-c-l-w/api-ia/pull/25),
+  [`68e1233`](https://github.com/MSPR-c-l-w/api-ia/commit/68e1233e7075ba0826f82a18f621d5af6d0f85d3))
+
+### Features
+
+- **nutrition**: Alias FR/EN + priorité des tables backend, keep_alive Ollama
+  ([#26](https://github.com/MSPR-c-l-w/api-ia/pull/26),
+  [`076f490`](https://github.com/MSPR-c-l-w/api-ia/commit/076f49002ceb6b3cb1afdefe7e6d5cb49e30c35a))
+
+- **nutrition**: Détection des aliments d'un plat via catalogue MongoDB
+  ([#26](https://github.com/MSPR-c-l-w/api-ia/pull/26),
+  [`076f490`](https://github.com/MSPR-c-l-w/api-ia/commit/076f49002ceb6b3cb1afdefe7e6d5cb49e30c35a))
+
+- **nutrition**: Détection vision locale gratuite via Ollama
+  ([#26](https://github.com/MSPR-c-l-w/api-ia/pull/26),
+  [`076f490`](https://github.com/MSPR-c-l-w/api-ia/commit/076f49002ceb6b3cb1afdefe7e6d5cb49e30c35a))
+
+- **nutrition**: Résout les aliments détectés vers les noms exacts de la base NoSQL
+  ([#26](https://github.com/MSPR-c-l-w/api-ia/pull/26),
+  [`076f490`](https://github.com/MSPR-c-l-w/api-ia/commit/076f49002ceb6b3cb1afdefe7e6d5cb49e30c35a))
+
+### Testing
+
+- Add unit and integration tests for nutrition adapters, feedback use case and Mongo repos
+  ([#25](https://github.com/MSPR-c-l-w/api-ia/pull/25),
+  [`68e1233`](https://github.com/MSPR-c-l-w/api-ia/commit/68e1233e7075ba0826f82a18f621d5af6d0f85d3))
+
+- Reach 100% coverage and add end-to-end workflow tests
+  ([#25](https://github.com/MSPR-c-l-w/api-ia/pull/25),
+  [`68e1233`](https://github.com/MSPR-c-l-w/api-ia/commit/68e1233e7075ba0826f82a18f621d5af6d0f85d3))
+
+- Suite de tests complète (unitaires, intégration, e2e) — couverture 100%
+  ([#25](https://github.com/MSPR-c-l-w/api-ia/pull/25),
+  [`68e1233`](https://github.com/MSPR-c-l-w/api-ia/commit/68e1233e7075ba0826f82a18f621d5af6d0f85d3))
+
+
 ## v0.1.7 (2026-06-10)
 
 ### Bug Fixes
