@@ -56,8 +56,14 @@ from app.contexts.workout.domain.services.ml_scoring_model import (  # noqa: E40
     ExerciseScoringModel,
     samples_to_xy,
 )
+from app.contexts.workout.domain.value_objects.exercise_definition import (  # noqa: E402
+    ExerciseDefinition,
+)
 from app.contexts.workout.domain.value_objects.user_profile import (  # noqa: E402
     UserProfileForScoring,
+)
+from app.contexts.workout.infrastructure.backend_exercise_lookup import (  # noqa: E402
+    BackendExerciseLookupService,
 )
 
 _LEARNING_RATES = [0.01, 0.05, 0.1, 0.2, 0.3]
@@ -67,6 +73,37 @@ _REPORT_PATH = os.path.join(
     "docs",
     "model-training-report.md",
 )
+
+
+async def _fetch_backend_exercise_catalog() -> dict[str, ExerciseDefinition]:
+    """Récupère le vrai catalogue (table Exercise du backend, ETL GitHub
+    JSON) — c'est ce catalogue, pas EXERCISE_CATALOG, que les exercices d'un
+    programme réel référencent en production. Best-effort : dict vide si le
+    backend est indisponible (dégradation contrôlée, comme pour Mongo)."""
+    import httpx
+
+    backend_url = os.environ.get("BACKEND_URL", "http://localhost:3001")
+    email = os.environ.get("BACKEND_SEED_EMAIL", "melissandre.clement@example.com")
+    password = os.environ.get("BACKEND_SEED_PASSWORD", "SeedPassword123!")
+
+    try:
+        login = httpx.post(
+            f"{backend_url}/auth/login",
+            json={"email": email, "password": password},
+            timeout=10,
+        )
+        login.raise_for_status()
+        token = login.json()["access_token"]
+        lookup = BackendExerciseLookupService(
+            backend_url=backend_url, access_token=token
+        )
+        catalog = await lookup.get_catalog()
+    except Exception as exc:  # noqa: BLE001 - dégradation contrôlée
+        print(f"Catalogue backend indisponible ({exc}) — catalogue statique seul.")
+        return {}
+
+    print(f"{len(catalog)} exercices chargés depuis le backend (catalogue réel).")
+    return {ex.id: ex for ex in catalog}
 
 
 async def _load_real_samples() -> list:
@@ -108,6 +145,7 @@ async def _load_real_samples() -> list:
         )
 
     catalog_by_id = {exercise.id: exercise for exercise in EXERCISE_CATALOG}
+    catalog_by_id.update(await _fetch_backend_exercise_catalog())
     real_samples = samples_from_feedback(
         feedbacks,
         programs_by_id,
@@ -184,6 +222,12 @@ Généré automatiquement par `scripts/train_workout_model.py` le {datetime.now(
 | Test (20%, hold-out) | {n_test} |
 
 Label binaire : `satisfait = 1` si note réelle/simulée ≥ 4 (sur 5), `0` sinon.
+Échantillons réels chargés depuis MongoDB (`workout_feedbacks` ⨝ `workout_programs`
+⨝ `user_fitness_profiles`), avec les exercices résolus depuis le **vrai catalogue
+backend** (`BackendExerciseLookupService`, table `Exercise` ETL GitHub JSON), pas
+le fichier statique `exercises_catalog.py`. Générés via `scripts/seed_real_workout_feedback.py`
+(entités de domaine + endpoints HTTP réels — seule la note de satisfaction est
+simulée, faute de testeurs humains à ce stade).
 
 ## 2. Balayage du taux d'apprentissage (learning_rate)
 

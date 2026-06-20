@@ -167,31 +167,38 @@ l'exercice est ≥ 4/5, `0` sinon.
 4. Évaluation sur le test set (hold-out, jamais vu à l'entraînement).
 5. Sauvegarde du modèle (`joblib`) + rapport (`docs/model-training-report.md`).
 
-**Résultats de la dernière exécution** (dataset 100 % synthétique, 1800 échantillons — MongoDB indisponible en environnement de dev) :
+**Résultats de la dernière exécution** (1650 échantillons réels — `scripts/seed_real_workout_feedback.py`,
+120 profils/programmes/feedbacks générés bout-en-bout via les vrais endpoints HTTP et
+le vrai catalogue backend `Exercise` — + 1800 synthétiques, 3450 au total) :
 
 | learning_rate | F1 (CV 5-fold) |
 |---|---|
-| 0.01 | 0.795 |
-| **0.05 (retenu)** | **0.830** |
-| 0.1 | 0.826 |
-| 0.2 | 0.824 |
-| 0.3 | 0.819 |
+| 0.01 | 0.486 |
+| 0.05 | 0.505 |
+| 0.1 | 0.515 |
+| 0.2 | 0.517 |
+| **0.3 (retenu)** | **0.517** |
 
-| Métrique (test set, 360 échantillons) | Valeur |
+| Métrique (test set, 690 échantillons) | Valeur |
 |---|---|
-| Exactitude | 0.839 |
-| Précision | 0.790 |
-| Rappel | 0.790 |
-| F1-score | 0.790 |
-| Taux de faux positifs | 0.131 |
-| Taux de faux négatifs | 0.210 |
-| R² (probabilité prédite vs note normalisée) | 0.539 |
+| Exactitude | 0.771 |
+| Précision | 0.776 |
+| Rappel | 0.427 |
+| F1-score | 0.551 |
+| Taux de faux positifs | 0.061 |
+| Taux de faux négatifs | 0.573 |
+| R² (probabilité prédite vs note normalisée) | 0.285 |
 
-Importance apprise des features : `objective_match` (0.59) ≫ `equipment_available`
-(0.19) > `level_diff` (0.15) > `limitation_conflict` (0.05) — confirme l'objectif
-comme facteur dominant (cohérent avec le poids 0.40 de l'heuristique d'origine)
-mais réajuste les poids secondaires à partir des données plutôt qu'arbitrairement.
-Détail complet : `docs/model-training-report.md` (régénéré à chaque entraînement).
+Importance apprise des features : `n_contraindications` (0.28) ≈ `objective_match`
+(0.27) ≈ `equipment_available` (0.21) > `level_diff` (0.12) — résultats plus modestes
+qu'avec le dataset 100 % synthétique précédent (F1 ≈ 0.79), ce qui est attendu : le
+label réel (note du programme entier reportée sur chaque exercice individuel) est un
+signal de supervision beaucoup plus bruité que la vérité terrain par exercice du
+générateur synthétique, et le catalogue réel (885 exercices backend) est bien plus
+hétérogène que les 43 exercices curés du fichier statique. Rappel plus faible (0.43) :
+le modèle est conservateur, il rate plus de "satisfaisant" qu'il n'en invente — cohérent
+avec le FPR très bas (0.06). Détail complet : `docs/model-training-report.md`
+(régénéré à chaque entraînement).
 
 ---
 
