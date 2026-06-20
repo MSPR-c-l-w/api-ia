@@ -44,6 +44,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.contexts.nutrition.domain.meal_type_features import (  # noqa: E402
     extract_features,
+    set_known_categories,
 )
 from app.contexts.nutrition.domain.meal_type_model import (  # noqa: E402
     DEFAULT_MODEL_PATH,
@@ -232,7 +233,8 @@ artificiellement.
 
 ## 5. Artefact
 
-Modèle sérialisé : `app/contexts/nutrition/domain/data/meal_type_model.joblib`
+Modèle sérialisé : `app/contexts/nutrition/data/meal_type_model.joblib`
+Catégories connues : `app/contexts/nutrition/data/meal_type_categories.json`
 """
 
     os.makedirs(os.path.dirname(_REPORT_PATH), exist_ok=True)
@@ -243,6 +245,10 @@ Modèle sérialisé : `app/contexts/nutrition/domain/data/meal_type_model.joblib
 
 def main() -> None:
     items = _fetch_catalog()
+    # Catégories réelles dérivées du vrai appel GET /nutrition ci-dessus (pas
+    # une liste copiée à la main) — persistées pour que l'API de production
+    # utilise exactement les mêmes colonnes que celles apprises ici.
+    set_known_categories([item.get("category") for item in items])
     x, y = _build_dataset(items)
 
     from collections import Counter

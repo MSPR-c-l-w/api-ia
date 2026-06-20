@@ -3,23 +3,39 @@
 import numpy as np
 import pytest
 
+from app.contexts.nutrition.domain import meal_type_features as mtf
 from app.contexts.nutrition.domain.meal_type_model import (
     VALID_MEAL_TYPES,
     MealTypeModel,
 )
 
 
+@pytest.fixture(autouse=True)
+def _fixed_categories(tmp_path):
+    """Catégories de test contrôlées et fixes, indépendantes du fichier JSON
+    généré par l'entraînement réel (et de l'ordre d'exécution des tests)."""
+    mtf.set_known_categories(["Fruits", "Desserts"], path=tmp_path / "categories.json")
+
+
+def _n_features() -> int:
+    return len(mtf.FEATURE_NAMES)
+
+
 def _synthetic_dataset(n_per_class: int = 20) -> tuple[np.ndarray, list[str]]:
     """Petit dataset synthétique séparable, juste pour tester la mécanique
     d'entraînement/prédiction (la qualité du modèle réel est évaluée par
-    scripts/train_meal_type_model.py sur les vraies données Kaggle)."""
+    scripts/train_meal_type_model.py sur les vraies données Kaggle).
+
+    Seules les 8 colonnes macro portent le signal de classe ; les colonnes
+    one-hot de catégorie restent du bruit centré sur zéro dans les deux cas
+    (cohérent avec un appel sans catégorie connue, ex. depuis meal_composer)."""
     rng = np.random.RandomState(0)
     x_parts = []
     y_parts = []
-    # Chaque classe est centrée sur une zone distincte de l'espace de features.
     for i, label in enumerate(VALID_MEAL_TYPES):
-        base = np.full((n_per_class, 8), float(i * 100))
-        noise = rng.normal(0, 1, size=(n_per_class, 8))
+        base = np.zeros((n_per_class, _n_features()))
+        base[:, :8] = float(i * 100)
+        noise = rng.normal(0, 1, size=(n_per_class, _n_features()))
         x_parts.append(base + noise)
         y_parts.extend([label] * n_per_class)
     return np.vstack(x_parts), y_parts
@@ -34,13 +50,13 @@ def trained_model() -> MealTypeModel:
 def test_predict_before_fit_raises():
     model = MealTypeModel()
     with pytest.raises(RuntimeError):
-        model.predict(np.zeros((1, 8)))
+        model.predict(np.zeros((1, _n_features())))
 
 
 def test_predict_proba_before_fit_raises():
     model = MealTypeModel()
     with pytest.raises(RuntimeError):
-        model.predict_proba(np.zeros((1, 8)))
+        model.predict_proba(np.zeros((1, _n_features())))
 
 
 def test_predict_returns_valid_meal_type(trained_model):

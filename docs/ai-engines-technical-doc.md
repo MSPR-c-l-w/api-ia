@@ -368,6 +368,74 @@ Avec les poids par nutriment :
 - `vegan` → exclut viandes + poissons + produits laitiers + œufs + miel
 - `allergies: ["arachide"]` → exclut tout item contenant "arachide" dans le nom
 
+### 4.4 MealTypeModel — Classification du créneau de repas
+
+Contrairement au modèle workout (majoritairement synthétique), ce modèle est
+entraîné sur des données **100 % réelles** : le catalogue `Nutrition` du backend
+(601+ aliments Kaggle, validés par revue humaine via le pipeline ETL). Le label
+(`meal_type_name`) est une colonne réelle du dataset — un vrai problème de
+classification supervisée à 4 classes, pas une règle distillée.
+
+**Features** (`meal_type_features.py`) : 8 macronutriments (calories, protéines,
+glucides, lipides, fibres, sucre, sodium, cholestérol) + encodage one-hot de la
+**catégorie** de l'aliment (`category`, table `Nutrition`).
+
+**Choix de la liste des catégories** : récupérée par un vrai appel
+`GET /nutrition` (pas une liste copiée à la main) dans
+`scripts/train_meal_type_model.py`, puis persistée en JSON
+(`app/contexts/nutrition/data/meal_type_categories.json`, artefact généré comme
+le `.joblib`) pour que l'API de production charge exactement les mêmes colonnes
+que celles apprises à l'entraînement — un modèle scikit-learn attend un vecteur
+de taille fixe, donc cette liste ne peut pas être recalculée à chaque requête.
+Un test empirique a comparé un sous-ensemble restreint (14 catégories les plus
+fréquentes, seuil ≥10 échantillons) à la liste exhaustive (56 catégories) : le
+F1 macro en validation croisée était quasi identique (0.479 vs 0.473), donc
+aucun signe de surapprentissage — la liste complète a été retenue, sans perte
+d'information sur les catégories rares. Une catégorie absente du catalogue au
+moment de l'entraînement (ou un item sans catégorie, ex. appelé depuis
+`meal_composer.py` qui ne la propage pas dans son catalogue) retombe sur un
+bucket "autre" — signal additif, jamais bloquant.
+
+**Résultats de la dernière exécution** (595 échantillons après filtrage de 7
+lignes corrompues, 476 train / 119 test) :
+
+| learning_rate | F1 macro (CV 5-fold) |
+|---|---|
+| 0.01 | 0.381 |
+| 0.05 | 0.465 |
+| **0.1 (retenu)** | **0.472** |
+| 0.2 | 0.462 |
+| 0.3 | 0.448 |
+
+| Métrique (test set, 119 échantillons) | Valeur |
+|---|---|
+| Exactitude (accuracy) | 0.571 |
+| Précision (macro) | 0.522 |
+| Rappel (macro) | 0.511 |
+| F1-score (macro) | 0.507 |
+| Baseline classe majoritaire (`Dîner`) | 0.355 |
+
+Le modèle bat la baseline naïve de **+21.6 points** (et le hasard pur, 25% sur
+4 classes, de +32 points). Avant l'ajout de la catégorie comme feature
+(macros seules), l'accuracy était de 0.462 (+10.7 points sur la baseline) —
+la catégorie a quasiment doublé l'écart à la baseline.
+
+La matrice de confusion montre des erreurs cohérentes avec la difficulté
+intrinsèque du problème : le modèle confond surtout Déjeuner↔Dîner et
+Petit-déjeuner↔Collation, des paires nutritionnellement proches (ex. un yaourt
+peut légitimement être pris au petit-déjeuner ou en collation) — pas des
+erreurs aléatoires. `sugar_g` et `sodium_mg` restent les features macro les
+plus discriminantes ; la catégorie la plus utile est `category_Repas/Transformé`.
+
+**Note qualité des données** : quelques valeurs de `category` dans le dataset
+source sont corrompues (fragments de parenthèses mal parsés du CSV Kaggle
+d'origine, ex. `"1 tasse)"`, `"4oz)"`). Sans impact sur le modèle — ces
+catégories obtiennent une importance ≈0 — mais à signaler comme limite connue
+de la qualité des données en amont (ETL).
+
+Détail complet : `docs/model-training-report-nutrition.md` (régénéré à chaque
+entraînement).
+
 ---
 
 ## 5. Métriques d'évaluation (MSE, RMSE, RSS, TSS, R²)
