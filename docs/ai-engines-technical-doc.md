@@ -134,7 +134,64 @@ score = 0.40 × score_objectif
 
 Après chaque séance, l'utilisateur soumet une note (1–5). Cette note est stockée dans MongoDB (`workout_feedbacks`) et permet :
 - De calculer les métriques de performance (voir §5)
-- Future évolution : réajuster les poids de scoring
+- D'entraîner le modèle de scoring appris (voir §3.5)
+
+### 3.5 Modèle de scoring appris (`ExerciseScoringModel`)
+
+La formule à poids fixes du §3.2 reste le **filtre dur** de compatibilité
+(matériel manquant, contre-indications), mais le **classement** des exercices
+compatibles est désormais confié à un modèle entraîné quand il est disponible
+(`app/contexts/workout/domain/services/ml_scoring_model.py`), avec repli
+automatique sur la formule heuristique si le modèle n'est pas encore entraîné.
+
+**Choix du modèle :** `GradientBoostingClassifier` (scikit-learn) — adapté à un
+faible nombre de features tabulaires, robuste au bruit des notes utilisateur
+(subjectives), et doté d'un hyperparamètre `learning_rate` explicite.
+
+**Features** (`feature_engineering.py`, 7 dimensions) : correspondance
+objectif, écart de niveau, disponibilité matériel, taux de recoupement des
+préférences, conflit de contre-indication, nombre de contre-indications,
+nombre de matériel requis.
+
+**Label** : binaire, `1` si la note réelle/simulée du programme contenant
+l'exercice est ≥ 4/5, `0` sinon.
+
+**Données d'entraînement** (`dataset_builder.py`) :
+- Réelles : reconstruites depuis MongoDB (`workout_feedbacks` ⨝ `workout_programs` ⨝ `user_fitness_profiles`) — la note du programme est reportée sur chaque exercice qu'il contenait ; un exercice explicitement signalé comme problématique reçoit la note minimale.
+- Synthétiques (bootstrap) : profils et notes simulées (vérité terrain dérivée de la compatibilité réelle + bruit gaussien), utilisées en complément tant que le volume réel de feedback est insuffisant pour un split train/test et une validation croisée statistiquement significatifs.
+
+**Procédure d'entraînement** (`scripts/train_workout_model.py`) :
+1. Split train/test 80/20 stratifié.
+2. Balayage du `learning_rate` ∈ {0.01, 0.05, 0.1, 0.2, 0.3} par validation croisée stratifiée 5-fold (métrique F1) sur le train set.
+3. Entraînement final avec le meilleur `learning_rate` sur 100 % du train set.
+4. Évaluation sur le test set (hold-out, jamais vu à l'entraînement).
+5. Sauvegarde du modèle (`joblib`) + rapport (`docs/model-training-report.md`).
+
+**Résultats de la dernière exécution** (dataset 100 % synthétique, 1800 échantillons — MongoDB indisponible en environnement de dev) :
+
+| learning_rate | F1 (CV 5-fold) |
+|---|---|
+| 0.01 | 0.795 |
+| **0.05 (retenu)** | **0.830** |
+| 0.1 | 0.826 |
+| 0.2 | 0.824 |
+| 0.3 | 0.819 |
+
+| Métrique (test set, 360 échantillons) | Valeur |
+|---|---|
+| Exactitude | 0.839 |
+| Précision | 0.790 |
+| Rappel | 0.790 |
+| F1-score | 0.790 |
+| Taux de faux positifs | 0.131 |
+| Taux de faux négatifs | 0.210 |
+| R² (probabilité prédite vs note normalisée) | 0.539 |
+
+Importance apprise des features : `objective_match` (0.59) ≫ `equipment_available`
+(0.19) > `level_diff` (0.15) > `limitation_conflict` (0.05) — confirme l'objectif
+comme facteur dominant (cohérent avec le poids 0.40 de l'heuristique d'origine)
+mais réajuste les poids secondaires à partir des données plutôt qu'arbitrairement.
+Détail complet : `docs/model-training-report.md` (régénéré à chaque entraînement).
 
 ---
 
@@ -438,7 +495,8 @@ carbs_g     RMSE=58g        R²=−10.1   dev_moy=−51%
 - Remplacer le cache mémoire par Redis pour la prod
 
 **Moyen terme (avec ML) :**
-- Entraîner un modèle de régression sur les feedbacks workout pour ajuster les poids (actuellement hardcodés)
+- ~~Entraîner un modèle de régression sur les feedbacks workout pour ajuster les poids (actuellement hardcodés)~~ ✅ Fait — voir §3.5 (`ExerciseScoringModel`, `GradientBoostingClassifier`)
+- Ré-entraîner périodiquement avec le volume réel de feedback une fois en production (le dataset actuel est majoritairement synthétique)
 - Intégrer un modèle de vision pour la détection réelle d'aliments (`POST /ai/nutrition/analyze` avec photo réelle)
 - Collaborative filtering : recommander des repas aimés par des users similaires
 
