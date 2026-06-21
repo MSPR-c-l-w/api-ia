@@ -65,6 +65,11 @@ from app.contexts.workout.domain.value_objects.user_profile import (  # noqa: E4
 from app.contexts.workout.infrastructure.backend_exercise_lookup import (  # noqa: E402
     BackendExerciseLookupService,
 )
+from app.shared.domain.model_deployment_guard import (  # noqa: E402
+    load_previous_metric,
+    save_metric,
+    should_deploy,
+)
 
 _LEARNING_RATES = [0.01, 0.05, 0.1, 0.2, 0.3]
 _N_SYNTHETIC_PROFILES = 300
@@ -283,7 +288,7 @@ Modèle sérialisé : `app/contexts/workout/domain/data/exercise_scoring_model.j
     print(f"\nRapport écrit dans {_REPORT_PATH}")
 
 
-async def main() -> None:
+async def main() -> dict:
     real_samples = await _load_real_samples()
     synthetic_samples = generate_synthetic_samples(
         EXERCISE_CATALOG,
@@ -328,8 +333,16 @@ async def main() -> None:
     for key, value in test_metrics.items():
         print(f"{key}: {value}")
 
-    final_model.save(DEFAULT_MODEL_PATH)
-    print(f"Modèle sauvegardé : {DEFAULT_MODEL_PATH}")
+    previous_f1 = load_previous_metric(DEFAULT_MODEL_PATH)
+    if should_deploy(test_metrics["f1"], previous_f1):
+        final_model.save(DEFAULT_MODEL_PATH)
+        save_metric(DEFAULT_MODEL_PATH, test_metrics["f1"])
+        print(f"Modèle sauvegardé : {DEFAULT_MODEL_PATH} (F1={test_metrics['f1']:.4f})")
+    else:
+        print(
+            f"Nouveau modèle moins bon (F1={test_metrics['f1']:.4f} < "
+            f"précédent={previous_f1:.4f}) — ancien modèle conservé.",
+        )
 
     _write_report(
         n_real=len(real_samples),
@@ -341,6 +354,7 @@ async def main() -> None:
         test_metrics=test_metrics,
         feature_importances=final_model.feature_importances(),
     )
+    return test_metrics
 
 
 if __name__ == "__main__":

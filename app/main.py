@@ -13,6 +13,10 @@ from app.presentation.exception_handlers import register_error_handlers
 from app.presentation.openapi import register_openapi_routes
 from app.routers import register_blueprints
 from app.shared.infrastructure.database import close_mongodb, connect_mongodb
+from app.shared.infrastructure.retraining_scheduler import (
+    shutdown_scheduler,
+    start_scheduler,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +70,12 @@ class _LifespanAsgiApp:
                 if event["type"] == "lifespan.startup":
                     if not settings.skip_mongodb_on_startup:
                         await connect_mongodb()
+                    if settings.enable_retraining_scheduler:
+                        start_scheduler()
                     await send({"type": "lifespan.startup.complete"})
                 elif event["type"] == "lifespan.shutdown":
+                    if settings.enable_retraining_scheduler:
+                        shutdown_scheduler()
                     if not settings.skip_mongodb_on_startup:
                         await close_mongodb()
                     await send({"type": "lifespan.shutdown.complete"})

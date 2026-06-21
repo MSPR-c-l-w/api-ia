@@ -52,6 +52,11 @@ from app.contexts.nutrition.domain.meal_type_model import (  # noqa: E402
     VALID_MEAL_TYPES,
     MealTypeModel,
 )
+from app.shared.domain.model_deployment_guard import (  # noqa: E402
+    load_previous_metric,
+    save_metric,
+    should_deploy,
+)
 
 _LEARNING_RATES = [0.01, 0.05, 0.1, 0.2, 0.3]
 _REPORT_PATH = os.path.join(
@@ -246,7 +251,7 @@ Catégories connues : `app/contexts/nutrition/data/meal_type_categories.json`
     print(f"\nRapport écrit dans {_REPORT_PATH}")
 
 
-def main() -> None:
+def main() -> dict:
     items = _fetch_catalog()
     # Catégories réelles dérivées du vrai appel GET /nutrition ci-dessus (pas
     # une liste copiée à la main) — persistées pour que l'API de production
@@ -304,8 +309,19 @@ def main() -> None:
     for key, value in test_metrics.items():
         print(f"{key}: {value}")
 
-    final_model.save(DEFAULT_MODEL_PATH)
-    print(f"Modèle sauvegardé : {DEFAULT_MODEL_PATH}")
+    previous_f1_macro = load_previous_metric(DEFAULT_MODEL_PATH)
+    if should_deploy(test_metrics["f1_macro"], previous_f1_macro):
+        final_model.save(DEFAULT_MODEL_PATH)
+        save_metric(DEFAULT_MODEL_PATH, test_metrics["f1_macro"])
+        print(
+            f"Modèle sauvegardé : {DEFAULT_MODEL_PATH} "
+            f"(F1 macro={test_metrics['f1_macro']:.4f})",
+        )
+    else:
+        print(
+            f"Nouveau modèle moins bon (F1 macro={test_metrics['f1_macro']:.4f} < "
+            f"précédent={previous_f1_macro:.4f}) — ancien modèle conservé.",
+        )
 
     _write_report(
         n_total=len(y),
@@ -317,6 +333,7 @@ def main() -> None:
         test_metrics=test_metrics,
         feature_importances=final_model.feature_importances(),
     )
+    return test_metrics
 
 
 if __name__ == "__main__":
