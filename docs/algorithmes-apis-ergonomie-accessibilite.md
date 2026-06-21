@@ -52,9 +52,40 @@ Détail complet : [`ai-engines-technical-doc.md` §1.1](ai-engines-technical-doc
 
 ---
 
-## 3. Métriques de performance des modèles IA (`api-ia`)
+## 3. Choix d'architecture côté `backend`
 
-### 3.1 Moteur Sport — `ExerciseScoringModel`
+Le cahier des charges autorise explicitement deux options : « *Cette API IA
+peut être intégrée au back-end développé lors de la MSPR TPRE501 ou bien
+développée séparément* ». Le projet a choisi de la **développer séparément**
+(`api-ia`, micro-service Python/Flask indépendant) plutôt que de l'intégrer au
+backend NestJS.
+
+**Justification** : l'écosystème de machine learning (scikit-learn, pandas) et
+les ressources qui en découlent (entraînement, ré-entraînement périodique,
+modèles `.joblib`) sont nativement Python, pas TypeScript/Node ; séparer
+permet une **scalabilité indépendante** de l'API métier et du moteur IA
+(charge CPU différente, cycle de déploiement différent), et une documentation
+OpenAPI dédiée au micro-service IA.
+
+**Intégration backend → `api-ia`** (`WorkoutMicroserviceClient`,
+`AiNutritionService`) :
+
+| Aspect                  | Implémentation                                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Authentification          | Header `X-API-Key` (clé partagée, `WORKOUT_SERVICE_API_KEY`)                                          |
+| Timeout                   | 10 secondes par appel (`REQUEST_TIMEOUT_MS`) — évite qu'une requête HTTP bloque indéfiniment           |
+| Gestion d'indisponibilité | Configuration manquante ou échec réseau → `WorkoutMicroserviceUnavailableException` (HTTP 503 explicite), jamais de crash silencieux ni de réponse vide non qualifiée |
+| Journalisation             | Échec loggé (`Logger.warn`) avec le code d'erreur Axios pour le diagnostic                              |
+
+Le backend ne porte donc ni algorithme ni modèle IA propre (c'est le rôle
+d'`api-ia`) ; sa contribution à ce livrable est le **choix architectural de
+séparation** et la **robustesse de l'appel** au micro-service.
+
+---
+
+## 4. Métriques de performance des modèles IA (`api-ia`)
+
+### 4.1 Moteur Sport — `ExerciseScoringModel`
 
 Entraîné sur 8877 échantillons (7077 réels issus de vrais feedbacks
 utilisateurs via le catalogue backend `Exercise`, 1800 synthétiques en
@@ -70,7 +101,7 @@ complément) ; évalué sur un test set hold-out de 1776 échantillons jamais vu
 | Taux de faux positifs    | 0.507  |
 | Taux de faux négatifs    | 0.124  |
 
-### 3.2 Moteur Nutrition — `MealTypeModel`
+### 4.2 Moteur Nutrition — `MealTypeModel`
 
 Entraîné sur 595 échantillons 100 % réels (catalogue `Nutrition`, 601+
 aliments Kaggle validés par revue humaine) ; évalué sur un test set hold-out
@@ -93,7 +124,7 @@ de validation du seuil de satisfaction côté sport) :
 
 ---
 
-## 4. Principes d'ergonomie appliqués (`social-media`)
+## 5. Principes d'ergonomie appliqués (`social-media`)
 
 | Principe                          | Implémentation                                                                                                       |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -110,7 +141,7 @@ Détail complet : `social-media/docs/conduite_du_changement_HealthAI` (§3.3 à
 
 ---
 
-## 5. Normes d'accessibilité mises en œuvre (`social-media`)
+## 6. Normes d'accessibilité mises en œuvre (`social-media`)
 
 Conformité visée : **WCAG / RGAA niveau AA**. Implémentation via la **React
 Native Accessibility API** sur les composants à fort impact utilisateur :
@@ -143,6 +174,7 @@ Détail complet : `social-media/docs/conduite_du_changement_HealthAI` (§3.1,
 | ----------------------------- | -------------- | ---------------------------------------------------------------------- |
 | Choix des algorithmes          | `api-ia`        | ✅ Documenté et justifié (§1)                                          |
 | Choix des APIs                 | `api-ia`        | ✅ Documenté et justifié (§2)                                          |
-| Métriques (précision/rappel/F1) | `api-ia`        | ✅ Fournies pour les deux modèles entraînés (§3)                       |
-| Principes d'ergonomie           | `social-media`  | ✅ Documentés, avec dispositifs concrets (§4)                          |
-| Normes d'accessibilité          | `social-media`  | ✅ Documentées, conformité partielle déclarée honnêtement (§5)         |
+| Choix d'architecture IA         | `backend`       | ✅ Séparation justifiée + robustesse de l'appel documentée (§3)        |
+| Métriques (précision/rappel/F1) | `api-ia`        | ✅ Fournies pour les deux modèles entraînés (§4)                       |
+| Principes d'ergonomie           | `social-media`  | ✅ Documentés, avec dispositifs concrets (§5)                          |
+| Normes d'accessibilité          | `social-media`  | ✅ Documentées, conformité partielle déclarée honnêtement (§6)         |
