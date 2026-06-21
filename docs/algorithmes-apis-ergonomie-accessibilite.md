@@ -136,6 +136,16 @@ de validation du seuil de satisfaction côté sport) :
 | Autonomie de l'utilisateur           | FAQ intégrée (5 questions), section Aide & Support, guide utilisateur externe (`DOCUMENTATION_UTILISATION.md`, ~470 lignes) |
 | Onboarding sans friction             | Inscription/connexion self-service, pas de configuration préalable requise                                              |
 
+**Ergonomie spécifique aux fonctionnalités IA** :
+
+| Fonctionnalité IA                          | État                                                                                                                 |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Recommandations IA (plan repas, programme sportif) | ✅ Existant — `AiRecommendationsScreen.tsx` : écran dédié, actions Générer/Régénérer explicites, états de chargement visibles, résultats affichés directement dans l'app (pas de redirection externe). |
+| Reconnaissance photo des aliments            | ⏳ Prévu, pas encore d'écran dédié sur `main` — dépend de la route backend `POST /ai/nutrition/analyze-photo`, actuellement sur la branche `feat/ai-photo-food-detection` (non mergée). Le contrat est déjà prêt côté `api-ia` (§2). |
+| Préférences IA utilisateur (allergies, régime, objectif, limitations physiques) | ⏳ Prévu, pas encore d'écran dédié sur `main` — l'endpoint backend `PUT /users/me/ai-preferences` existe déjà ; il manque l'écran de réglages qui le consomme. |
+
+Quand ces deux derniers points seront livrés, l'ergonomie attendue est la même que pour les recommandations déjà en place : action explicite, retour visuel immédiat, résultat consultable dans l'app sans étape intermédiaire — cohérent avec les principes déjà appliqués ci-dessus (clarté des messages, continuité de service, autonomie de l'utilisateur).
+
 Détail complet : `social-media/docs/conduite_du_changement_HealthAI` (§3.3 à
 §4.2) — document dédié au livrable « conduite du changement ».
 
