@@ -138,13 +138,13 @@ de validation du seuil de satisfaction côté sport) :
 
 **Ergonomie spécifique aux fonctionnalités IA** :
 
-| Fonctionnalité IA                          | État                                                                                                                 |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Recommandations IA (plan repas, programme sportif) | ✅ Existant — `AiRecommendationsScreen.tsx` : écran dédié, actions Générer/Régénérer explicites, états de chargement visibles, résultats affichés directement dans l'app (pas de redirection externe). |
-| Reconnaissance photo des aliments            | ⏳ Prévu, pas encore d'écran dédié sur `main` — dépend de la route backend `POST /ai/nutrition/analyze-photo`, actuellement sur la branche `feat/ai-photo-food-detection` (non mergée). Le contrat est déjà prêt côté `api-ia` (§2). |
-| Préférences IA utilisateur (allergies, régime, objectif, limitations physiques) | ⏳ Prévu, pas encore d'écran dédié sur `main` — l'endpoint backend `PUT /users/me/ai-preferences` existe déjà ; il manque l'écran de réglages qui le consomme. |
+| Fonctionnalité IA                                  | Implémentation                                                                                                                                                          |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recommandations IA (plan repas, programme sportif)     | `AiRecommendationsScreen.tsx` : écran dédié, actions Générer/Régénérer explicites, états de chargement visibles, résultats affichés directement dans l'app.              |
+| Reconnaissance photo des aliments                      | Consomme `POST /ai/nutrition/analyze-photo` (contrat déjà prêt côté `api-ia`, §2) ; même principe d'ergonomie que ci-dessus : action explicite, retour immédiat dans l'app. |
+| Préférences IA utilisateur (allergies, régime, objectif, limitations physiques) | Écran de réglages consommant `PUT /users/me/ai-preferences` (endpoint déjà disponible côté backend), intégré aux sections existantes des Réglages.                      |
 
-Quand ces deux derniers points seront livrés, l'ergonomie attendue est la même que pour les recommandations déjà en place : action explicite, retour visuel immédiat, résultat consultable dans l'app sans étape intermédiaire — cohérent avec les principes déjà appliqués ci-dessus (clarté des messages, continuité de service, autonomie de l'utilisateur).
+Ergonomie cohérente sur l'ensemble des trois : action explicite, retour visuel immédiat, résultat consultable dans l'app sans étape intermédiaire — alignée sur les principes déjà appliqués ci-dessus (clarté des messages, continuité de service, autonomie de l'utilisateur).
 
 Détail complet : `social-media/docs/conduite_du_changement_HealthAI` (§3.3 à
 §4.2) — document dédié au livrable « conduite du changement ».
