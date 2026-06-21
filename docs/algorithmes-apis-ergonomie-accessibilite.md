@@ -311,14 +311,3 @@ dédiés (taille de police, contraste forcé) ni de tests automatisés
 d'accessibilité (axe-core) dans le dépôt à ce stade.
 
 ---
-
-## Synthèse
-
-| Volet du livrable           | Dépôt          | Statut                                                              |
-| ----------------------------- | -------------- | ---------------------------------------------------------------------- |
-| Choix des algorithmes          | `api-ia`        | ✅ Documenté et justifié (§1)                                          |
-| Choix des APIs                 | `api-ia`        | ✅ Documenté et justifié (§2)                                          |
-| Choix d'architecture IA         | `backend`       | ✅ Séparation justifiée + robustesse de l'appel documentée (§3)        |
-| Métriques (précision/rappel/F1, R²/RMSE/MSE) | `api-ia` | ✅ Fournies pour les deux modèles entraînés et le socle déterministe (§4) |
-| Principes d'ergonomie           | `social-media`  | ✅ Documentés, avec dispositifs concrets (§5)                          |
-| Normes d'accessibilité          | `social-media`  | ✅ Documentées, conformité partielle déclarée honnêtement (§6)         |
