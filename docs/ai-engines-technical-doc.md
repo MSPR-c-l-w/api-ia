@@ -8,6 +8,7 @@
 ## Table des matières
 
 1. [Vue d'ensemble du système](#1-vue-densemble-du-système)
+   - [1.1 Choix des algorithmes et des APIs externes](#11-choix-des-algorithmes-et-des-apis-externes)
 2. [Données sources](#2-données-sources)
 3. [Moteur Sport (Workout)](#3-moteur-sport-workout)
 4. [Moteur Nutrition](#4-moteur-nutrition)
@@ -32,7 +33,57 @@ Client (frontend / mobile)
                                         └── MySQL → table Nutrition (601 aliments Kaggle)
 ```
 
-Les deux moteurs sont **déterministes et basés sur des règles pondérées** (pas de modèle ML entraîné). Les métriques MSE/R² servent à mesurer la qualité des recommandations, pas à entraîner un modèle.
+Les deux moteurs combinent un **socle déterministe à règles pondérées** (filtre dur de
+compatibilité, calcul TDEE/macros) et un **modèle de classification entraîné**
+(`GradientBoostingClassifier`, §3.5 et §4.4) qui affine le classement/la prédiction
+quand un modèle est disponible, avec repli automatique sur les règles sinon. Les
+métriques MSE/R²/F1 servent à mesurer la qualité des recommandations et, pour les
+modèles entraînés, à valider leur déploiement (§6).
+
+### 1.1 Choix des algorithmes et des APIs externes
+
+**Algorithmes de classification** (`ExerciseScoringModel`, `MealTypeModel`) :
+`GradientBoostingClassifier` — justification détaillée vs réseau de neurones,
+arbre de décision seul et forêt aléatoire en §3.5 (commune aux deux modèles,
+référencée en §4.4).
+
+**APIs de vision par ordinateur** (détection des aliments sur photo,
+`AnalyzeMealUseCase`) — chaîne de fournisseurs avec ordre de priorité explicite
+(`app/composition/container.py`) :
+
+| Ordre | Fournisseur          | Pourquoi à cette position                                                                                                                                    |
+| ----- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | **Ollama** (local)    | Gratuit, exécution locale (`OllamaVisionProvider`, modèle `llava`) — aucun coût par appel, aucune donnée image envoyée à un tiers, pas de quota. Prioritaire tant qu'un serveur Ollama est joignable (`NUTRITION_VISION_OLLAMA_ENDPOINT`). |
+| 2     | **Google Vision API** | Fallback si Ollama indisponible (pas de serveur local, ex. environnement de prod sans GPU) — quota gratuit suffisant pour la volumétrie du projet, mais payant au-delà et nécessite une clé API externe (`NUTRITION_GOOGLE_VISION_API_KEY`). |
+| 3     | Stub interne          | Dégradation contrôlée si aucun des deux n'est configuré/joignable (ex. CI, dev sans clé) — renvoie une détection par défaut plutôt que de faire échouer la requête. |
+
+`AnalyzeMealUseCase` essaie chaque fournisseur dans l'ordre et passe au suivant
+en cas d'échec (timeout, erreur réseau, réponse vide) — voir §7.1 pour le cas
+« Vision IA non configurée ».
+
+**API de génération de texte (LLM)** (suggestions nutritionnelles, plans de
+repas, `LlmProvider`) : même logique — **Ollama** en priorité (`NUTRITION_LLM_ENDPOINT`,
+exécution locale, gratuite, conforme au choix imposé par le cahier des charges
+pour le NLP), avec repli sur des suggestions statiques en français si aucun
+endpoint LLM n'est configuré (pas de dépendance dure à une API tierce payante).
+
+**Robustesse de l'intégration externe** (§3 du cahier des charges — gestion des
+pannes, cache, limitation de charge) :
+
+- **Cache** : `AiCacheService` (in-memory, TTL configurable, clé = hash SHA256
+  du contenu de la requête) — évite les appels redondants à la vision/au LLM
+  pour un input identique (`app/contexts/nutrition/infrastructure/cache.py`).
+- **Fallback en cascade** : décrit ci-dessus pour la vision ; idem pour le LLM.
+- **Dégradation contrôlée** : aucune erreur 5xx renvoyée au client si une API
+  externe est indisponible — le système répond toujours avec le meilleur
+  résultat disponible (Ollama → Google Vision → stub), documenté en §7.1.
+
+> **Hors périmètre d'`api-ia`** : les principes d'ergonomie et les normes
+> d'accessibilité (WCAG/RGAA niveau AA) mentionnés dans le même item du cahier
+> des charges concernent l'**interface utilisateur** (frontend) — `api-ia` est
+> un micro-service backend sans interface graphique propre (seule sa
+> documentation Swagger/OpenAPI est consultable visuellement). Cette partie du
+> livrable est portée par le(s) dépôt(s) frontend du projet.
 
 ---
 
