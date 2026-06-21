@@ -148,6 +148,37 @@ automatique sur la formule heuristique si le modèle n'est pas encore entraîné
 faible nombre de features tabulaires, robuste au bruit des notes utilisateur
 (subjectives), et doté d'un hyperparamètre `learning_rate` explicite.
 
+**Pourquoi le boosting plutôt que les autres architectures (réseau de
+neurones, arbre de décision seul, forêt aléatoire)** — la même justification
+s'applique au modèle nutrition (§4.4) :
+
+- **Réseau de neurones** : nécessite un volume de données bien plus important
+  pour généraliser (on a quelques milliers d'échantillons, pas des dizaines de
+  milliers) — avec si peu d'exemples, un réseau mémorise plutôt qu'il
+  n'apprend. Il excelle surtout sur des données brutes non structurées
+  (images, texte) où il doit apprendre lui-même les features ; ici les
+  features sont déjà des nombres propres et peu nombreux (7 à 23 colonnes).
+  Sur données tabulaires de cette taille, les ensembles d'arbres égalent ou
+  battent les réseaux de neurones en pratique. Coût d'infrastructure
+  disproportionné en plus (GPU, formats de déploiement plus lourds) pour un
+  service qui tourne dans un conteneur à côté d'une API NestJS.
+- **Arbre de décision seul** : plus instable (forte variance) — un seul arbre
+  profond peut épouser parfaitement le bruit des données d'entraînement
+  (notamment les labels faibles du sport, où la note d'un programme entier
+  est reportée sur chaque exercice individuel) et généralise mal. Le boosting
+  combine ~100 arbres **peu profonds** (`max_depth=3`) appris séquentiellement
+  (chacun corrige les erreurs du précédent), ce qui réduit la variance par
+  rapport à un arbre unique tout en gardant l'interprétabilité
+  (`feature_importances_`).
+- **Forêt aléatoire** : ensemble d'arbres également, mais appris en parallèle
+  sur des sous-échantillons indépendants (bagging) — réduit la variance mais
+  ne corrige pas spécifiquement les erreurs résiduelles d'un arbre à l'autre.
+  Le boosting (apprentissage séquentiel et correctif) converge généralement
+  mieux sur peu de features, et surtout expose un hyperparamètre
+  `learning_rate` direct et facile à justifier — une forêt aléatoire n'en a
+  pas d'équivalent aussi explicite, ce qui collait moins à l'exigence
+  d'ajustement d'hyperparamètre.
+
 **Features** (`feature_engineering.py`, 7 dimensions) : correspondance
 objectif, écart de niveau, disponibilité matériel, taux de recoupement des
 préférences, conflit de contre-indication, nombre de contre-indications,
@@ -369,6 +400,10 @@ Avec les poids par nutriment :
 - `allergies: ["arachide"]` → exclut tout item contenant "arachide" dans le nom
 
 ### 4.4 MealTypeModel — Classification du créneau de repas
+
+Même architecture que le modèle workout (`GradientBoostingClassifier`) — voir
+§3.5 pour la justification complète du choix (boosting vs réseau de neurones,
+arbre de décision seul, forêt aléatoire).
 
 Contrairement au modèle workout (majoritairement synthétique), ce modèle est
 entraîné sur des données **100 % réelles** : le catalogue `Nutrition` du backend
