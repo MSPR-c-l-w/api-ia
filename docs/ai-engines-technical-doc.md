@@ -179,6 +179,33 @@ s'applique au modèle nutrition (§4.4) :
   pas d'équivalent aussi explicite, ce qui collait moins à l'exigence
   d'ajustement d'hyperparamètre.
 
+**Type d'apprentissage et procédure** (même méthodologie pour le modèle
+nutrition, §4.4) :
+- **Apprentissage supervisé** — chaque échantillon a un label connu à
+  l'avance (note réelle/simulée pour le sport, `meal_type_name` réel pour la
+  nutrition), pas de clustering ni de réduction de dimension : on a une
+  vérité terrain disponible, donc pas de raison de se priver de la
+  supervision.
+- **Entraînement par lot (batch)** — `model.fit(x_train, y_train)` est
+  appelé une seule fois sur l'intégralité du train set, pas par mini-lot ni
+  en ligne (online) : le volume (8877 échantillons sport, 595 nutrition)
+  tient entièrement en mémoire, aucun besoin de traitement incrémental ou de
+  flux continu.
+- **Sélection des données d'apprentissage** : pour le sport, mélange
+  d'échantillons réels (MongoDB) et synthétiques en complément quand le
+  volume réel est insuffisant ; pour la nutrition, 100 % de données réelles
+  filtrées (lignes corrompues exclues). Split train/test stratifié pour
+  préserver la distribution des classes dans les deux sous-ensembles.
+- **Validation croisée stratifiée 5-fold** (`StratifiedKFold`) pour le
+  balayage du `learning_rate` — stratifiée spécifiquement pour préserver
+  l'équilibre des classes entre les folds (un déséquilibre de classe peut
+  fausser la validation croisée, cf. l'épisode du seuil de satisfaction
+  ci-dessous).
+- **Bootstrap** : utilisé côté sport pour générer les données synthétiques
+  complémentaires (`generate_synthetic_samples`, échantillonnage avec
+  perturbation gaussienne) quand le volume réel de feedback était
+  insuffisant pour un split statistiquement significatif.
+
 **Features** (`feature_engineering.py`, 7 dimensions) : correspondance
 objectif, écart de niveau, disponibilité matériel, taux de recoupement des
 préférences, conflit de contre-indication, nombre de contre-indications,
@@ -403,7 +430,9 @@ Avec les poids par nutriment :
 
 Même architecture que le modèle workout (`GradientBoostingClassifier`) — voir
 §3.5 pour la justification complète du choix (boosting vs réseau de neurones,
-arbre de décision seul, forêt aléatoire).
+arbre de décision seul, forêt aléatoire) et pour la méthodologie
+d'entraînement (apprentissage supervisé, par lot, validation croisée
+stratifiée 5-fold), identique pour les deux modèles.
 
 Contrairement au modèle workout (majoritairement synthétique), ce modèle est
 entraîné sur des données **100 % réelles** : le catalogue `Nutrition` du backend
