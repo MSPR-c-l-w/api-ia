@@ -8,8 +8,8 @@ une distillation d'une règle interne — c'est un vrai problème de
 classification supervisée.
 
 Pipeline :
-  1. Authentification auprès du backend (compte de seed local par défaut,
-     surchargeable via BACKEND_SEED_EMAIL / BACKEND_SEED_PASSWORD).
+  1. Authentification auprès du backend (compte de service défini dans
+     .env via BACKEND_SERVICE_EMAIL / BACKEND_SERVICE_PASSWORD).
   2. Récupération de tout le catalogue ``GET /nutrition`` (pagination).
   3. Filtrage des lignes dont ``meal_type_name`` n'est pas une des 4 valeurs
      valides (quelques lignes de données corrompues dans le CSV source).
@@ -42,6 +42,7 @@ from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app.config import settings  # noqa: E402
 from app.contexts.nutrition.domain.meal_type_features import (  # noqa: E402
     extract_features,
     set_known_categories,
@@ -51,14 +52,6 @@ from app.contexts.nutrition.domain.meal_type_model import (  # noqa: E402
     VALID_MEAL_TYPES,
     MealTypeModel,
 )
-
-_BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:3001")
-# Compte de seed local (prisma/seed.ts du backend) — dev uniquement, surchargeable.
-_SEED_EMAIL = os.environ.get(
-    "BACKEND_SEED_EMAIL",
-    "melissandre.clement@example.com",
-)
-_SEED_PASSWORD = os.environ.get("BACKEND_SEED_PASSWORD", "SeedPassword123!")
 
 _LEARNING_RATES = [0.01, 0.05, 0.1, 0.2, 0.3]
 _REPORT_PATH = os.path.join(
@@ -70,17 +63,27 @@ _REPORT_PATH = os.path.join(
 
 def _fetch_catalog() -> list[dict]:
     """Récupère tout le catalogue Nutrition réel depuis le backend NestJS."""
+    if not settings.backend_service_email or not settings.backend_service_password:
+        raise RuntimeError(
+            "BACKEND_SERVICE_EMAIL / BACKEND_SERVICE_PASSWORD non configurés "
+            "(.env) — requis pour authentifier ce script auprès du backend.",
+        )
+
+    backend_url = settings.backend_url
     with httpx.Client(timeout=10) as client:
         login = client.post(
-            f"{_BACKEND_URL}/auth/login",
-            json={"email": _SEED_EMAIL, "password": _SEED_PASSWORD},
+            f"{backend_url}/auth/login",
+            json={
+                "email": settings.backend_service_email,
+                "password": settings.backend_service_password,
+            },
         )
         login.raise_for_status()
         token = login.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
         first = client.get(
-            f"{_BACKEND_URL}/nutrition",
+            f"{backend_url}/nutrition",
             params={"page": 1, "limit": 1},
             headers=headers,
         )
@@ -91,7 +94,7 @@ def _fetch_catalog() -> list[dict]:
         page_size = 100
         for page in range(1, (total // page_size) + 2):
             resp = client.get(
-                f"{_BACKEND_URL}/nutrition",
+                f"{backend_url}/nutrition",
                 params={"page": page, "limit": page_size},
                 headers=headers,
             )
@@ -101,7 +104,7 @@ def _fetch_catalog() -> list[dict]:
             if len(batch) < page_size:
                 break
 
-    print(f"{len(items)} aliments récupérés depuis {_BACKEND_URL}/nutrition.")
+    print(f"{len(items)} aliments récupérés depuis {backend_url}/nutrition.")
     return items
 
 

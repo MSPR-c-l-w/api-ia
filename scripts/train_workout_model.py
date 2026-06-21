@@ -82,14 +82,14 @@ async def _fetch_backend_exercise_catalog() -> dict[str, ExerciseDefinition]:
     backend est indisponible (dégradation contrôlée, comme pour Mongo)."""
     import httpx
 
-    backend_url = os.environ.get("BACKEND_URL", "http://localhost:3001")
-    email = os.environ.get("BACKEND_SEED_EMAIL", "melissandre.clement@example.com")
-    password = os.environ.get("BACKEND_SEED_PASSWORD", "SeedPassword123!")
-
+    backend_url = settings.backend_url
     try:
         login = httpx.post(
             f"{backend_url}/auth/login",
-            json={"email": email, "password": password},
+            json={
+                "email": settings.backend_service_email,
+                "password": settings.backend_service_password,
+            },
             timeout=10,
         )
         login.raise_for_status()

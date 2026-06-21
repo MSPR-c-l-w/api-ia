@@ -32,6 +32,7 @@ import httpx
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app.config import settings  # noqa: E402
 from app.contexts.workout.domain.entities.workout_program import (  # noqa: E402
     UserFitnessProfile,
 )
@@ -55,14 +56,8 @@ from app.contexts.workout.infrastructure.persistence.mongo_fitness_profile_repos
 from app.shared.infrastructure import database  # noqa: E402
 
 _API_BASE = os.environ.get("API_IA_URL", "http://localhost:8000")
-_API_KEY = os.environ.get("BACKEND_API_KEY", "change-me")
 _N_USERS = int(os.environ.get("N_SEED_USERS", "120"))
 _BASE_USER_ID = 900_000  # plage dédiée, ne collisionne pas avec de vrais users
-
-_BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:3001")
-# Compte de seed local (prisma/seed.ts du backend) — dev uniquement, surchargeable.
-_SEED_EMAIL = os.environ.get("BACKEND_SEED_EMAIL", "melissandre.clement@example.com")
-_SEED_PASSWORD = os.environ.get("BACKEND_SEED_PASSWORD", "SeedPassword123!")
 
 
 async def _fetch_real_catalog_by_id() -> dict[str, object]:
@@ -70,15 +65,27 @@ async def _fetch_real_catalog_by_id() -> dict[str, object]:
     ETL GitHub JSON) — c'est ce catalogue, pas le fichier statique
     exercises_catalog.py, que `create_workout_program` utilise réellement en
     production (cf. backend_exercise_lookup.py + create_workout_program.py)."""
+    if not settings.backend_service_email or not settings.backend_service_password:
+        raise RuntimeError(
+            "BACKEND_SERVICE_EMAIL / BACKEND_SERVICE_PASSWORD non configurés "
+            "(.env) — requis pour authentifier ce script auprès du backend.",
+        )
+
     login = httpx.post(
-        f"{_BACKEND_URL}/auth/login",
-        json={"email": _SEED_EMAIL, "password": _SEED_PASSWORD},
+        f"{settings.backend_url}/auth/login",
+        json={
+            "email": settings.backend_service_email,
+            "password": settings.backend_service_password,
+        },
         timeout=10,
     )
     login.raise_for_status()
     token = login.json()["access_token"]
 
-    lookup = BackendExerciseLookupService(backend_url=_BACKEND_URL, access_token=token)
+    lookup = BackendExerciseLookupService(
+        backend_url=settings.backend_url,
+        access_token=token,
+    )
     catalog = await lookup.get_catalog()
     return {ex.id: ex for ex in catalog}
 
@@ -148,7 +155,7 @@ async def main() -> None:
                     "preferences": profile.preferences,
                     "limitations": profile.limitations,
                 },
-                headers={"X-API-Key": _API_KEY},
+                headers={"X-API-Key": settings.backend_api_key},
             )
             if resp.status_code != 200:
                 print(
@@ -174,7 +181,7 @@ async def main() -> None:
             fb_resp = await client.post(
                 f"/recommendations/workout/{program['programId']}/feedback",
                 json={"rating": rating, "exercicesProblematiques": problematic},
-                headers={"X-API-Key": _API_KEY},
+                headers={"X-API-Key": settings.backend_api_key},
             )
             if fb_resp.status_code == 200:
                 created_feedbacks += 1
