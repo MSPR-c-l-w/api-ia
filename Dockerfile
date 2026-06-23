@@ -1,7 +1,7 @@
 # ──────────────────────────────────────────────
 # Stage 1 — Python dependency builder
 # ──────────────────────────────────────────────
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.14-slim-bookworm AS builder
 
 ENV VIRTUAL_ENV=/opt/venv \
     PIP_NO_CACHE_DIR=1 \
@@ -19,7 +19,7 @@ RUN pip install --upgrade pip && \
 # ──────────────────────────────────────────────
 # Stage 2 — Production image with embedded MongoDB 7
 # ──────────────────────────────────────────────
-FROM python:3.12-slim-bookworm AS production
+FROM python:3.14-slim-bookworm AS production
 
 ARG BUILD_DATE
 ARG VCS_REF
