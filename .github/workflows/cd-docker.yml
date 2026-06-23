@@ -104,7 +104,7 @@ jobs:
 
       # ── Set up QEMU for cross-platform emulation ───────────
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       # ── Set up Buildx (enables multi-platform + cache) ─────
       - name: Set up Docker Buildx
