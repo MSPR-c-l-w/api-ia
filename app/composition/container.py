@@ -25,6 +25,9 @@ from app.contexts.nutrition.infrastructure.vision.ollama_vision_provider import 
 from app.contexts.workout.application.use_cases.create_workout_program import (
     CreateWorkoutProgramUseCase,
 )
+from app.contexts.workout.application.use_cases.get_workout_program import (
+    GetWorkoutProgramUseCase,
+)
 from app.contexts.workout.application.use_cases.submit_workout_feedback import (
     SubmitWorkoutFeedbackUseCase,
 )
@@ -75,6 +78,7 @@ class Container:
             self._workout_programs,
             exercise_lookup=_exercise_lookup,
         )
+        self.get_workout_program = GetWorkoutProgramUseCase(self._workout_programs)
         self.submit_workout_feedback = SubmitWorkoutFeedbackUseCase(
             self._workout_programs,
             self._workout_feedbacks,

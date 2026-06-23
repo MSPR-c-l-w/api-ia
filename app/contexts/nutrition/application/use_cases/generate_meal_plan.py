@@ -54,32 +54,21 @@ class GenerateMealPlanUseCase:
         allergies = {item.lower() for item in payload.allergies}
         daily_calories = self._resolve_calories(payload)
 
-        # Try LLM-generated plan first (#89/#90)
-        llm_days = await self._try_llm_plan(payload, daily_calories)
-        if llm_days:
-            notes = [
-                "Plan généré par le modèle de langage.",
-                "Les préférences et contraintes déclarées sont prises en compte.",
-            ]
-            if payload.budget:
-                notes.append(
-                    f"Budget alimentaire mensuel ({payload.budget:.0f}€) pris en compte "
-                    "qualitativement (ingrédients abordables).",
-                )
-            result = MealPlanResponse(
-                userGoal=payload.user_goal,
-                days=llm_days,
-                notes=notes,
-                modelStatus="llm_active",
-            )
-            await self._persist(payload.user_id, result)
-            return result
-
-        # MealComposer fallback — uses the real Kaggle food catalog
+        # MealComposer first — uses the real validated Kaggle food catalog + MealTypeModel
         composer_days = await self._compose_plan(payload, constraints, allergies)
         if composer_days:
             scores = [d.get("score", 0) for d in composer_days]
             avg_score = round(sum(scores) / len(scores), 3) if scores else 0
+            notes = [
+                f"Plan composé à partir du catalogue de {await self._catalog_size()} aliments validés (source : dataset Kaggle, pipeline ETL).",
+                f"Score moyen d'équilibre nutritionnel : {avg_score:.3f}/1.0",
+                "Les contraintes et allergies déclarées sont appliquées.",
+            ]
+            if payload.budget:
+                notes.append(
+                    f"Budget alimentaire mensuel ({payload.budget:.0f}€) pris en compte "
+                    "dans la sélection des aliments.",
+                )
             result = MealPlanResponse(
                 userGoal=payload.user_goal,
                 days=[
@@ -93,12 +82,29 @@ class GenerateMealPlanUseCase:
                     )
                     for d in composer_days
                 ],
-                notes=[
-                    f"Plan composé à partir du catalogue de {await self._catalog_size()} aliments validés.",
-                    f"Score moyen d'équilibre nutritionnel : {avg_score:.3f}/1.0",
-                    "Les contraintes et allergies déclarées sont appliquées.",
-                ],
+                notes=notes,
                 modelStatus="composer_active",
+            )
+            await self._persist(payload.user_id, result)
+            return result
+
+        # LLM fallback — if catalog unavailable, generate from language model knowledge
+        llm_days = await self._try_llm_plan(payload, daily_calories)
+        if llm_days:
+            notes = [
+                "Plan généré par le modèle de langage (catalogue indisponible).",
+                "Les préférences et contraintes déclarées sont prises en compte.",
+            ]
+            if payload.budget:
+                notes.append(
+                    f"Budget alimentaire mensuel ({payload.budget:.0f}€) pris en compte "
+                    "qualitativement (ingrédients abordables).",
+                )
+            result = MealPlanResponse(
+                userGoal=payload.user_goal,
+                days=llm_days,
+                notes=notes,
+                modelStatus="llm_active",
             )
             await self._persist(payload.user_id, result)
             return result
