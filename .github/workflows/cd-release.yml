@@ -24,7 +24,7 @@ jobs:
       id-token: write       # OIDC (future PyPI trusted publishing)
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Full history is required to determine the correct version bump
           fetch-depth: 0
