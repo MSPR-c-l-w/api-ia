@@ -33,8 +33,8 @@ async def generate_workout_program():
 @map_application_errors
 async def get_workout_program(program_id: str):
     """Récupère un programme sportif depuis MongoDB via son ID."""
-    result: WorkoutProgramResponse = (
-        await get_container().get_workout_program.execute(program_id)
+    result: WorkoutProgramResponse = await get_container().get_workout_program.execute(
+        program_id
     )
     return model_response(result)
 
