@@ -2,6 +2,83 @@
 
 <!-- version list -->
 
+## v0.3.0 (2026-06-24)
+
+### Bug Fixes
+
+- **scripts**: Retire les identifiants hardcodes des scripts d'entrainement
+  ([`f3b64b3`](https://github.com/MSPR-c-l-w/api-ia/commit/f3b64b3b139c97d2edd9da85f69967fefce85875))
+
+- **workout**: Entraine le modele sur le vrai catalogue backend + vraies donnees
+  ([`96eb17f`](https://github.com/MSPR-c-l-w/api-ia/commit/96eb17fa8a3bf1000c347ca8ebf48eaff78bf3ee))
+
+- **workout**: Valide empiriquement le seuil de satisfaction du label
+  ([`99232e0`](https://github.com/MSPR-c-l-w/api-ia/commit/99232e086801f498200c49afdf01d0625ad124c4))
+
+### Code Style
+
+- Ruff format get_workout_program + recommendations router
+  ([`2eee183`](https://github.com/MSPR-c-l-w/api-ia/commit/2eee183173f803b39eab351d72648164f523292f))
+
+### Documentation
+
+- Ajoute l'ergonomie des fonctionnalites IA cote social-media
+  ([`3d4f9e9`](https://github.com/MSPR-c-l-w/api-ia/commit/3d4f9e9f4e6ffe366cdc37137c174dd42e403dfa))
+
+- Ajoute le role du backend (separation architecturale + integration)
+  ([`2648c7e`](https://github.com/MSPR-c-l-w/api-ia/commit/2648c7e263c9c8a2ff20a4ab76cd7c3e1bfc0f02))
+
+- Doc unique algorithmes/APIs/ergonomie/accessibilite/metriques
+  ([`a1a6af8`](https://github.com/MSPR-c-l-w/api-ia/commit/a1a6af89cee93c99598479c059c78ff4fb4141e3))
+
+- Documente ENABLE_RETRAINING_SCHEDULER dans .env.example
+  ([`98daf52`](https://github.com/MSPR-c-l-w/api-ia/commit/98daf524a3c2720224b79adb2a87927a18cdd30e))
+
+- Enrichit le livrable avec le detail complet d'ai-engines-technical-doc.md
+  ([`36be672`](https://github.com/MSPR-c-l-w/api-ia/commit/36be67272469929869ec9df3e49d0e7c56fcdedf))
+
+- Flux analyse photo + mise a jour meal-plan (branche Flo)
+  ([`dc2edb1`](https://github.com/MSPR-c-l-w/api-ia/commit/dc2edb1f4ec831228db9b4b88de3c0b2ba1352af))
+
+- Justifie le choix d'architecture ML (boosting vs alternatives)
+  ([`2bb6238`](https://github.com/MSPR-c-l-w/api-ia/commit/2bb62385d3ce2083df98ca5470abae9c3004fb7a))
+
+- Justifie les choix d'API externes (vision, LLM) et corrige une affirmation obsolete
+  ([`cb22bf7`](https://github.com/MSPR-c-l-w/api-ia/commit/cb22bf7ce00540880df886e07a1a1d945773fb6c))
+
+- Nomme explicitement la methodologie d'entrainement
+  ([`64d9eb0`](https://github.com/MSPR-c-l-w/api-ia/commit/64d9eb076957c349091e45c68d12e107d9bb7d2a))
+
+- Precise la piste de reentrainement periodique
+  ([`234197f`](https://github.com/MSPR-c-l-w/api-ia/commit/234197f31c15ba5cc2c41c3b607be176322f6a85))
+
+- Retire la section Synthese du livrable algos/APIs/ergonomie
+  ([`f890aec`](https://github.com/MSPR-c-l-w/api-ia/commit/f890aeccc79c474382bb5e7e388ad1a742a8fe87))
+
+- Simplifie la presentation de l'ergonomie IA (sans statut pending)
+  ([`fd9d866`](https://github.com/MSPR-c-l-w/api-ia/commit/fd9d8662a65bd2925f6d2bc0d7341d6bd566d807))
+
+### Features
+
+- **ml**: Reentrainement periodique automatique des modeles
+  ([`0875470`](https://github.com/MSPR-c-l-w/api-ia/commit/087547013cf8d1594197dba51f0d9e6b0b040258))
+
+- **nutrition**: Ajoute la categorie comme feature du MealTypeModel
+  ([`5a8dcea`](https://github.com/MSPR-c-l-w/api-ia/commit/5a8dcea1239d98071a73626f7cd4e1663a82a8bb))
+
+- **nutrition**: Modele de classification du type de repas (donnees reelles)
+  ([`2da5030`](https://github.com/MSPR-c-l-w/api-ia/commit/2da503061616b90e2b1f4d22b062e29dda18f7b6))
+
+- **nutrition**: Support du budget dans MealPlanRequest
+  ([`d1f92cb`](https://github.com/MSPR-c-l-w/api-ia/commit/d1f92cbe837a49d7db761b81ce3aaeef9dc346be))
+
+- **workout**: Endpoint GET /recommendations/workout/:id + doc complete api-ia
+  ([`19ed806`](https://github.com/MSPR-c-l-w/api-ia/commit/19ed8065043b192c164534c26df047ffa488e312))
+
+- **workout**: Modele de scoring appris (GradientBoostingClassifier)
+  ([`59b58d9`](https://github.com/MSPR-c-l-w/api-ia/commit/59b58d96210db970df11c548d00e80525a504eff))
+
+
 ## v0.2.0 (2026-06-20)
 
 ### Bug Fixes
