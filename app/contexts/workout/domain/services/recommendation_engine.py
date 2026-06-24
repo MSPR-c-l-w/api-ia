@@ -1,13 +1,25 @@
-"""Moteur multi-critères de sélection d'exercices — EPIC #79 #95."""
+"""Moteur multi-critères de sélection d'exercices — EPIC #79 #95.
+
+Le classement des exercices compatibles utilise, lorsqu'il est disponible, un
+modèle appris (``ExerciseScoringModel``, entraîné via
+``scripts/train_workout_model.py``) plutôt que la formule à poids fixes
+historique. Les filtres durs (matériel manquant, contre-indication) restent
+volontairement déterministes/rule-based — ce sont des contraintes de sécurité,
+pas des préférences à apprendre. Si le modèle n'a pas encore été entraîné
+(fichier absent), le moteur retombe automatiquement sur la formule heuristique.
+"""
 
 from app.contexts.workout.domain.data.exercises_catalog import (
     EXERCISE_CATALOG,
     LEVEL_ORDER,
 )
+from app.contexts.workout.domain.services.ml_scoring_model import ExerciseScoringModel
 from app.contexts.workout.domain.value_objects.exercise_definition import (
     ExerciseDefinition,
 )
 from app.contexts.workout.domain.value_objects.user_profile import UserProfileForScoring
+
+_ml_model: ExerciseScoringModel | None = ExerciseScoringModel.load()
 
 WEIGHT_OBJECTIVE = 0.40
 WEIGHT_LEVEL = 0.25
@@ -123,17 +135,13 @@ def is_exercise_compatible(
     return _score_equipment_availability(exercise, profile) != 0.0
 
 
-def score_exercise(
+def _score_exercise_heuristic(
     exercise: ExerciseDefinition,
     user_profile: UserProfileForScoring,
 ) -> float:
-    """
-    Score entre 0 et 1 selon objectif (40 %), niveau (25 %), matériel (20 %),
-    préférences (10 %), limitations (5 %).
-    """
-    if not is_exercise_compatible(exercise, user_profile):
-        return 0.0
-
+    """Formule à poids fixes (objectif 40 % / niveau 25 % / matériel 20 % /
+    préférences 10 % / limitations 5 %) — repli si le modèle appris n'est pas
+    encore disponible."""
     equipment_score = _score_equipment_availability(exercise, user_profile)
     total = (
         WEIGHT_OBJECTIVE * _score_objective(exercise, user_profile)
@@ -143,6 +151,23 @@ def score_exercise(
         + WEIGHT_LIMITATIONS * _score_limitations_soft(exercise, user_profile)
     )
     return round(min(1.0, max(0.0, total)), 4)
+
+
+def score_exercise(
+    exercise: ExerciseDefinition,
+    user_profile: UserProfileForScoring,
+) -> float:
+    """Score entre 0 et 1. Délègue au modèle appris (``ExerciseScoringModel``)
+    quand il est disponible, sinon utilise la formule heuristique historique.
+    Les filtres durs (matériel, contre-indications) s'appliquent dans tous
+    les cas."""
+    if not is_exercise_compatible(exercise, user_profile):
+        return 0.0
+
+    if _ml_model is not None:
+        return round(_ml_model.score_exercise(exercise, user_profile), 4)
+
+    return _score_exercise_heuristic(exercise, user_profile)
 
 
 def select_top_by_muscle_group(

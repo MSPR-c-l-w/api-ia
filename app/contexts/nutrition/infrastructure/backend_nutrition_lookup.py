@@ -15,12 +15,17 @@ from typing import Any
 
 import httpx
 
-from app.contexts.nutrition.domain.models import Macros
+from app.contexts.nutrition.domain.models import FoodMacroTuple, Macros
 from app.contexts.nutrition.infrastructure.nutrition_lookup import (
     _DEFAULT,
     DEFAULT_SERVING_G,
     NutritionLookupService,
 )
+
+# Nombre de champs utilisés par compute_macros() (alignés sur Macros) — les 3
+# champs suivants (sugar/sodium/cholesterol) sont portés par get_catalog()
+# pour MealTypeModel mais ignorés ici, Macros n'ayant pas ces attributs.
+_COMPUTE_MACROS_FIELDS = 5
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +52,8 @@ class BackendNutritionLookupService:
         self._timeout = timeout_seconds
         self._fallback = NutritionLookupService()
 
-        # In-memory cache: {normalised_name: (calories, proteins, carbs, fats, fibers)}
-        self._table: dict[str, tuple[float, float, float, float, float]] = {}
+        # In-memory cache: {normalised_name: (cal, prot, carbs, fat, fiber, sugar, sodium, cholesterol)}
+        self._table: dict[str, FoodMacroTuple] = {}
         self._compiled_patterns: dict[str, re.Pattern[str]] = {}
         self._loaded_at: float = 0.0
 
@@ -70,7 +75,7 @@ class BackendNutritionLookupService:
             if estimated:
                 any_estimated = True
             factor = serving_g / 100.0
-            for i, val in enumerate(per_100g):
+            for i, val in enumerate(per_100g[:_COMPUTE_MACROS_FIELDS]):
                 totals[i] += val * factor
 
         return Macros(
@@ -85,7 +90,7 @@ class BackendNutritionLookupService:
     def is_food_label(self, label: str) -> bool:
         return self._fallback.is_food_label(label)
 
-    async def get_catalog(self) -> dict[str, tuple[float, float, float, float, float]]:
+    async def get_catalog(self) -> dict[str, FoodMacroTuple]:
         """Return the full backend catalog (loads from backend if needed)."""
         await self._ensure_loaded()
         return dict(self._table)
@@ -94,9 +99,7 @@ class BackendNutritionLookupService:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _lookup(
-        self, food_name: str
-    ) -> tuple[tuple[float, float, float, float, float], bool]:
+    def _lookup(self, food_name: str) -> tuple[FoodMacroTuple, bool]:
         normalised = food_name.lower().strip()
 
         # 1. Exact match (fastest path)
@@ -167,7 +170,7 @@ class BackendNutritionLookupService:
                 if len(batch) < page_size:
                     break
 
-        new_table: dict[str, tuple[float, float, float, float, float]] = {}
+        new_table: dict[str, FoodMacroTuple] = {}
         for item in items:
             name: str = (item.get("name") or "").lower().strip()
             if not name:
@@ -178,6 +181,9 @@ class BackendNutritionLookupService:
                 float(item.get("carbohydrates_g") or 0),
                 float(item.get("fat_g") or 0),
                 float(item.get("fiber_g") or 0),
+                float(item.get("sugar_g") or 0),
+                float(item.get("sodium_mg") or 0),
+                float(item.get("cholesterol_mg") or 0),
             )
 
         self._table = new_table

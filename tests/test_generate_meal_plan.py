@@ -27,11 +27,12 @@ class FakeLookup:
         return self._catalog
 
 
-def _payload(goal="equilibre", constraints=None, allergies=None):
+def _payload(goal="equilibre", constraints=None, allergies=None, budget=None):
     return MealPlanRequest(
         userGoal=goal,
         dietaryConstraints=constraints or [],
         allergies=allergies or [],
+        budget=budget,
     )
 
 
@@ -52,14 +53,14 @@ def _seven_days_json():
 
 def _rich_catalog():
     return {
-        "poulet grillé": (165, 31, 0, 4, 0),
-        "riz complet": (130, 3, 28, 1, 2),
-        "saumon": (208, 20, 0, 13, 0),
-        "brocoli": (34, 3, 7, 0, 3),
-        "flocons d'avoine": (380, 13, 67, 7, 10),
-        "yaourt grec": (59, 10, 4, 0, 0),
-        "amandes": (579, 21, 22, 50, 12),
-        "lentilles": (116, 9, 20, 0, 8),
+        "poulet grillé": (165, 31, 0, 4, 0, 0, 0, 0),
+        "riz complet": (130, 3, 28, 1, 2, 0, 0, 0),
+        "saumon": (208, 20, 0, 13, 0, 0, 0, 0),
+        "brocoli": (34, 3, 7, 0, 3, 0, 0, 0),
+        "flocons d'avoine": (380, 13, 67, 7, 10, 0, 0, 0),
+        "yaourt grec": (59, 10, 4, 0, 0, 0, 0, 0),
+        "amandes": (579, 21, 22, 50, 12, 0, 0, 0),
+        "lentilles": (116, 9, 20, 0, 8, 0, 0, 0),
     }
 
 
@@ -77,6 +78,43 @@ async def test_llm_plan_active():
 
     assert result.model_status == "llm_active"
     assert len(result.days) == 7
+
+
+async def test_llm_plan_notes_mention_budget_when_provided():
+    use_case = GenerateMealPlanUseCase(
+        llm_provider=FakeLlm(plan_text=_seven_days_json())
+    )
+
+    result = await use_case.execute(_payload(budget=150.0))
+
+    assert any("150" in note for note in result.notes)
+
+
+async def test_llm_plan_notes_omit_budget_when_absent():
+    use_case = GenerateMealPlanUseCase(
+        llm_provider=FakeLlm(plan_text=_seven_days_json())
+    )
+
+    result = await use_case.execute(_payload())
+
+    assert not any("udget" in note for note in result.notes)
+
+
+async def test_budget_forwarded_to_llm_provider():
+    received_kwargs = {}
+
+    class RecordingLlm(FakeLlm):
+        async def generate_meal_plan_text(self, **kwargs):
+            received_kwargs.update(kwargs)
+            return self._plan_text
+
+    use_case = GenerateMealPlanUseCase(
+        llm_provider=RecordingLlm(plan_text=_seven_days_json())
+    )
+
+    await use_case.execute(_payload(budget=200.0))
+
+    assert received_kwargs["budget"] == 200.0
 
 
 async def test_llm_plan_wrapped_in_response_field():

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from app.contexts.nutrition.domain.models import Macros, VisionDetection
+from app.contexts.nutrition.domain.models import FoodMacroTuple, Macros, VisionDetection
 
 
 class VisionProviderPort(Protocol):
@@ -54,6 +54,7 @@ class NutritionLookupPort(Protocol):
     async def compute_macros(self, food_labels: list[str]) -> Macros: ...
     def is_food_label(self, label: str) -> bool: ...
 
-    async def get_catalog(self) -> dict[str, tuple[float, float, float, float, float]]:
-        """Return the full food catalog as {name: (cal, prot, carb, fat, fiber)}."""
+    async def get_catalog(self) -> dict[str, FoodMacroTuple]:
+        """Return the full food catalog as {name: (cal, prot, carb, fat, fiber,
+        sugar, sodium, cholesterol)}."""
         ...

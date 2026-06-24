@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     backend_timeout_seconds: int = 5
     backend_service_email: str | None = None
     backend_service_password: str | None = None
+    # Réentraînement périodique des modèles ML (sport + nutrition) — voir
+    # app/shared/infrastructure/retraining_scheduler.py. Désactivé par défaut
+    # (dev/CI) pour ne jamais déclencher d'appels HTTP/Mongo non sollicités.
+    enable_retraining_scheduler: bool = False
 
     @property
     def skip_mongodb_on_startup(self) -> bool:

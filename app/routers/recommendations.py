@@ -28,6 +28,17 @@ async def generate_workout_program():
     return model_response(result)
 
 
+@recommendations_bp.get("/workout/<program_id>")
+@require_api_key
+@map_application_errors
+async def get_workout_program(program_id: str):
+    """Récupère un programme sportif depuis MongoDB via son ID."""
+    result: WorkoutProgramResponse = await get_container().get_workout_program.execute(
+        program_id
+    )
+    return model_response(result)
+
+
 @recommendations_bp.post("/workout/<program_id>/feedback")
 @require_api_key
 @map_application_errors

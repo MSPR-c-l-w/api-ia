@@ -8,6 +8,7 @@
 ## Table des matières
 
 1. [Vue d'ensemble du système](#1-vue-densemble-du-système)
+   - [1.1 Choix des algorithmes et des APIs externes](#11-choix-des-algorithmes-et-des-apis-externes)
 2. [Données sources](#2-données-sources)
 3. [Moteur Sport (Workout)](#3-moteur-sport-workout)
 4. [Moteur Nutrition](#4-moteur-nutrition)
@@ -32,7 +33,57 @@ Client (frontend / mobile)
                                         └── MySQL → table Nutrition (601 aliments Kaggle)
 ```
 
-Les deux moteurs sont **déterministes et basés sur des règles pondérées** (pas de modèle ML entraîné). Les métriques MSE/R² servent à mesurer la qualité des recommandations, pas à entraîner un modèle.
+Les deux moteurs combinent un **socle déterministe à règles pondérées** (filtre dur de
+compatibilité, calcul TDEE/macros) et un **modèle de classification entraîné**
+(`GradientBoostingClassifier`, §3.5 et §4.4) qui affine le classement/la prédiction
+quand un modèle est disponible, avec repli automatique sur les règles sinon. Les
+métriques MSE/R²/F1 servent à mesurer la qualité des recommandations et, pour les
+modèles entraînés, à valider leur déploiement (§6).
+
+### 1.1 Choix des algorithmes et des APIs externes
+
+**Algorithmes de classification** (`ExerciseScoringModel`, `MealTypeModel`) :
+`GradientBoostingClassifier` — justification détaillée vs réseau de neurones,
+arbre de décision seul et forêt aléatoire en §3.5 (commune aux deux modèles,
+référencée en §4.4).
+
+**APIs de vision par ordinateur** (détection des aliments sur photo,
+`AnalyzeMealUseCase`) — chaîne de fournisseurs avec ordre de priorité explicite
+(`app/composition/container.py`) :
+
+| Ordre | Fournisseur          | Pourquoi à cette position                                                                                                                                    |
+| ----- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | **Ollama** (local)    | Gratuit, exécution locale (`OllamaVisionProvider`, modèle `llava`) — aucun coût par appel, aucune donnée image envoyée à un tiers, pas de quota. Prioritaire tant qu'un serveur Ollama est joignable (`NUTRITION_VISION_OLLAMA_ENDPOINT`). |
+| 2     | **Google Vision API** | Fallback si Ollama indisponible (pas de serveur local, ex. environnement de prod sans GPU) — quota gratuit suffisant pour la volumétrie du projet, mais payant au-delà et nécessite une clé API externe (`NUTRITION_GOOGLE_VISION_API_KEY`). |
+| 3     | Stub interne          | Dégradation contrôlée si aucun des deux n'est configuré/joignable (ex. CI, dev sans clé) — renvoie une détection par défaut plutôt que de faire échouer la requête. |
+
+`AnalyzeMealUseCase` essaie chaque fournisseur dans l'ordre et passe au suivant
+en cas d'échec (timeout, erreur réseau, réponse vide) — voir §7.1 pour le cas
+« Vision IA non configurée ».
+
+**API de génération de texte (LLM)** (suggestions nutritionnelles, plans de
+repas, `LlmProvider`) : même logique — **Ollama** en priorité (`NUTRITION_LLM_ENDPOINT`,
+exécution locale, gratuite, conforme au choix imposé par le cahier des charges
+pour le NLP), avec repli sur des suggestions statiques en français si aucun
+endpoint LLM n'est configuré (pas de dépendance dure à une API tierce payante).
+
+**Robustesse de l'intégration externe** (§3 du cahier des charges — gestion des
+pannes, cache, limitation de charge) :
+
+- **Cache** : `AiCacheService` (in-memory, TTL configurable, clé = hash SHA256
+  du contenu de la requête) — évite les appels redondants à la vision/au LLM
+  pour un input identique (`app/contexts/nutrition/infrastructure/cache.py`).
+- **Fallback en cascade** : décrit ci-dessus pour la vision ; idem pour le LLM.
+- **Dégradation contrôlée** : aucune erreur 5xx renvoyée au client si une API
+  externe est indisponible — le système répond toujours avec le meilleur
+  résultat disponible (Ollama → Google Vision → stub), documenté en §7.1.
+
+> **Hors périmètre d'`api-ia`** : les principes d'ergonomie et les normes
+> d'accessibilité (WCAG/RGAA niveau AA) mentionnés dans le même item du cahier
+> des charges concernent l'**interface utilisateur** (frontend) — `api-ia` est
+> un micro-service backend sans interface graphique propre (seule sa
+> documentation Swagger/OpenAPI est consultable visuellement). Cette partie du
+> livrable est portée par le(s) dépôt(s) frontend du projet.
 
 ---
 
@@ -134,7 +185,138 @@ score = 0.40 × score_objectif
 
 Après chaque séance, l'utilisateur soumet une note (1–5). Cette note est stockée dans MongoDB (`workout_feedbacks`) et permet :
 - De calculer les métriques de performance (voir §5)
-- Future évolution : réajuster les poids de scoring
+- D'entraîner le modèle de scoring appris (voir §3.5)
+
+### 3.5 Modèle de scoring appris (`ExerciseScoringModel`)
+
+La formule à poids fixes du §3.2 reste le **filtre dur** de compatibilité
+(matériel manquant, contre-indications), mais le **classement** des exercices
+compatibles est désormais confié à un modèle entraîné quand il est disponible
+(`app/contexts/workout/domain/services/ml_scoring_model.py`), avec repli
+automatique sur la formule heuristique si le modèle n'est pas encore entraîné.
+
+**Choix du modèle :** `GradientBoostingClassifier` (scikit-learn) — adapté à un
+faible nombre de features tabulaires, robuste au bruit des notes utilisateur
+(subjectives), et doté d'un hyperparamètre `learning_rate` explicite.
+
+**Pourquoi le boosting plutôt que les autres architectures (réseau de
+neurones, arbre de décision seul, forêt aléatoire)** — la même justification
+s'applique au modèle nutrition (§4.4) :
+
+- **Réseau de neurones** : nécessite un volume de données bien plus important
+  pour généraliser (on a quelques milliers d'échantillons, pas des dizaines de
+  milliers) — avec si peu d'exemples, un réseau mémorise plutôt qu'il
+  n'apprend. Il excelle surtout sur des données brutes non structurées
+  (images, texte) où il doit apprendre lui-même les features ; ici les
+  features sont déjà des nombres propres et peu nombreux (7 à 23 colonnes).
+  Sur données tabulaires de cette taille, les ensembles d'arbres égalent ou
+  battent les réseaux de neurones en pratique. Coût d'infrastructure
+  disproportionné en plus (GPU, formats de déploiement plus lourds) pour un
+  service qui tourne dans un conteneur à côté d'une API NestJS.
+- **Arbre de décision seul** : plus instable (forte variance) — un seul arbre
+  profond peut épouser parfaitement le bruit des données d'entraînement
+  (notamment les labels faibles du sport, où la note d'un programme entier
+  est reportée sur chaque exercice individuel) et généralise mal. Le boosting
+  combine ~100 arbres **peu profonds** (`max_depth=3`) appris séquentiellement
+  (chacun corrige les erreurs du précédent), ce qui réduit la variance par
+  rapport à un arbre unique tout en gardant l'interprétabilité
+  (`feature_importances_`).
+- **Forêt aléatoire** : ensemble d'arbres également, mais appris en parallèle
+  sur des sous-échantillons indépendants (bagging) — réduit la variance mais
+  ne corrige pas spécifiquement les erreurs résiduelles d'un arbre à l'autre.
+  Le boosting (apprentissage séquentiel et correctif) converge généralement
+  mieux sur peu de features, et surtout expose un hyperparamètre
+  `learning_rate` direct et facile à justifier — une forêt aléatoire n'en a
+  pas d'équivalent aussi explicite, ce qui collait moins à l'exigence
+  d'ajustement d'hyperparamètre.
+
+**Type d'apprentissage et procédure** (même méthodologie pour le modèle
+nutrition, §4.4) :
+- **Apprentissage supervisé** — chaque échantillon a un label connu à
+  l'avance (note réelle/simulée pour le sport, `meal_type_name` réel pour la
+  nutrition), pas de clustering ni de réduction de dimension : on a une
+  vérité terrain disponible, donc pas de raison de se priver de la
+  supervision.
+- **Entraînement par lot (batch)** — `model.fit(x_train, y_train)` est
+  appelé une seule fois sur l'intégralité du train set, pas par mini-lot ni
+  en ligne (online) : le volume (8877 échantillons sport, 595 nutrition)
+  tient entièrement en mémoire, aucun besoin de traitement incrémental ou de
+  flux continu.
+- **Sélection des données d'apprentissage** : pour le sport, mélange
+  d'échantillons réels (MongoDB) et synthétiques en complément quand le
+  volume réel est insuffisant ; pour la nutrition, 100 % de données réelles
+  filtrées (lignes corrompues exclues). Split train/test stratifié pour
+  préserver la distribution des classes dans les deux sous-ensembles.
+- **Validation croisée stratifiée 5-fold** (`StratifiedKFold`) pour le
+  balayage du `learning_rate` — stratifiée spécifiquement pour préserver
+  l'équilibre des classes entre les folds (un déséquilibre de classe peut
+  fausser la validation croisée, cf. l'épisode du seuil de satisfaction
+  ci-dessous).
+- **Bootstrap** : utilisé côté sport pour générer les données synthétiques
+  complémentaires (`generate_synthetic_samples`, échantillonnage avec
+  perturbation gaussienne) quand le volume réel de feedback était
+  insuffisant pour un split statistiquement significatif.
+
+**Features** (`feature_engineering.py`, 7 dimensions) : correspondance
+objectif, écart de niveau, disponibilité matériel, taux de recoupement des
+préférences, conflit de contre-indication, nombre de contre-indications,
+nombre de matériel requis.
+
+**Label** : binaire, `1` si la note réelle/simulée du programme contenant
+l'exercice est ≥ 4/5, `0` sinon.
+
+**Données d'entraînement** (`dataset_builder.py`) :
+- Réelles : reconstruites depuis MongoDB (`workout_feedbacks` ⨝ `workout_programs` ⨝ `user_fitness_profiles`) — la note du programme est reportée sur chaque exercice qu'il contenait ; un exercice explicitement signalé comme problématique reçoit la note minimale.
+- Synthétiques (bootstrap) : profils et notes simulées (vérité terrain dérivée de la compatibilité réelle + bruit gaussien), utilisées en complément tant que le volume réel de feedback est insuffisant pour un split train/test et une validation croisée statistiquement significatifs.
+
+**Procédure d'entraînement** (`scripts/train_workout_model.py`) :
+1. Split train/test 80/20 stratifié.
+2. Balayage du `learning_rate` ∈ {0.01, 0.05, 0.1, 0.2, 0.3} par validation croisée stratifiée 5-fold (métrique F1) sur le train set.
+3. Entraînement final avec le meilleur `learning_rate` sur 100 % du train set.
+4. Évaluation sur le test set (hold-out, jamais vu à l'entraînement).
+5. Sauvegarde du modèle (`joblib`) + rapport (`docs/model-training-report.md`).
+
+**Résultats de la dernière exécution** (7077 échantillons réels — `scripts/seed_real_workout_feedback.py`,
+521 profils/programmes/feedbacks générés bout-en-bout via les vrais endpoints HTTP et
+le vrai catalogue backend `Exercise` (885 exercices), dont au moins un programme
+réellement testé et noté par un humain pendant cette session — + 1800 synthétiques,
+8877 au total) :
+
+| learning_rate | F1 (CV 5-fold) |
+|---|---|
+| 0.01 | 0.795 |
+| **0.05 (retenu)** | **0.796** |
+| 0.1 | 0.793 |
+| 0.2 | 0.787 |
+| 0.3 | 0.792 |
+
+| Métrique (test set, 1776 échantillons) | Valeur |
+|---|---|
+| Exactitude | 0.726 |
+| Précision | 0.729 |
+| Rappel | 0.876 |
+| F1-score | 0.796 |
+| Taux de faux positifs | 0.507 |
+| Taux de faux négatifs | 0.124 |
+| R² (probabilité prédite vs note normalisée) | 0.253 |
+
+Importance apprise des features : `objective_match` (0.62) ≫ `equipment_available`
+(0.17) > `level_diff` (0.11) — confirme l'objectif comme facteur largement dominant,
+cohérent avec le poids 0.40 de l'heuristique d'origine.
+
+**Note méthodologique sur le seuil de satisfaction** (`_SATISFIED_THRESHOLD`,
+`ml_scoring_model.py`) : une première analyse sur un petit échantillon (120
+feedbacks, notes {2,3,4} seulement) avait suggéré d'abaisser le seuil de 4 à 3 pour
+rééquilibrer les classes. Sur un échantillon plus large (521 feedbacks, notes
+{2:30, 3:137, 4:211, 5:143}), ce seuil à 3 s'est révélé être une **sur-correction** :
+94 % des échantillons devenaient "satisfaisant", rendant la tâche triviale (F1 gonflé
+à 0.96 en prédisant presque toujours positif). Le seuil à 4 a été conservé (~61 %
+positif sur le test set), un déséquilibre plus sain. Ceci illustre un piège classique
+de l'apprentissage supervisé : le seuil de binarisation d'un label continu est un choix
+de modélisation, pas un paramètre que l'entraînement optimise — il doit être validé
+empiriquement sur un échantillon représentatif avant d'être figé.
+
+Détail complet : `docs/model-training-report.md` (régénéré à chaque entraînement).
 
 ---
 
@@ -295,6 +477,80 @@ Avec les poids par nutriment :
 - `vegan` → exclut viandes + poissons + produits laitiers + œufs + miel
 - `allergies: ["arachide"]` → exclut tout item contenant "arachide" dans le nom
 
+### 4.4 MealTypeModel — Classification du créneau de repas
+
+Même architecture que le modèle workout (`GradientBoostingClassifier`) — voir
+§3.5 pour la justification complète du choix (boosting vs réseau de neurones,
+arbre de décision seul, forêt aléatoire) et pour la méthodologie
+d'entraînement (apprentissage supervisé, par lot, validation croisée
+stratifiée 5-fold), identique pour les deux modèles.
+
+Contrairement au modèle workout (majoritairement synthétique), ce modèle est
+entraîné sur des données **100 % réelles** : le catalogue `Nutrition` du backend
+(601+ aliments Kaggle, validés par revue humaine via le pipeline ETL). Le label
+(`meal_type_name`) est une colonne réelle du dataset — un vrai problème de
+classification supervisée à 4 classes, pas une règle distillée.
+
+**Features** (`meal_type_features.py`) : 8 macronutriments (calories, protéines,
+glucides, lipides, fibres, sucre, sodium, cholestérol) + encodage one-hot de la
+**catégorie** de l'aliment (`category`, table `Nutrition`).
+
+**Choix de la liste des catégories** : récupérée par un vrai appel
+`GET /nutrition` (pas une liste copiée à la main) dans
+`scripts/train_meal_type_model.py`, puis persistée en JSON
+(`app/contexts/nutrition/data/meal_type_categories.json`, artefact généré comme
+le `.joblib`) pour que l'API de production charge exactement les mêmes colonnes
+que celles apprises à l'entraînement — un modèle scikit-learn attend un vecteur
+de taille fixe, donc cette liste ne peut pas être recalculée à chaque requête.
+Un test empirique a comparé un sous-ensemble restreint (14 catégories les plus
+fréquentes, seuil ≥10 échantillons) à la liste exhaustive (56 catégories) : le
+F1 macro en validation croisée était quasi identique (0.479 vs 0.473), donc
+aucun signe de surapprentissage — la liste complète a été retenue, sans perte
+d'information sur les catégories rares. Une catégorie absente du catalogue au
+moment de l'entraînement (ou un item sans catégorie, ex. appelé depuis
+`meal_composer.py` qui ne la propage pas dans son catalogue) retombe sur un
+bucket "autre" — signal additif, jamais bloquant.
+
+**Résultats de la dernière exécution** (595 échantillons après filtrage de 7
+lignes corrompues, 476 train / 119 test) :
+
+| learning_rate | F1 macro (CV 5-fold) |
+|---|---|
+| 0.01 | 0.381 |
+| 0.05 | 0.465 |
+| **0.1 (retenu)** | **0.472** |
+| 0.2 | 0.462 |
+| 0.3 | 0.448 |
+
+| Métrique (test set, 119 échantillons) | Valeur |
+|---|---|
+| Exactitude (accuracy) | 0.571 |
+| Précision (macro) | 0.522 |
+| Rappel (macro) | 0.511 |
+| F1-score (macro) | 0.507 |
+| Baseline classe majoritaire (`Dîner`) | 0.355 |
+
+Le modèle bat la baseline naïve de **+21.6 points** (et le hasard pur, 25% sur
+4 classes, de +32 points). Avant l'ajout de la catégorie comme feature
+(macros seules), l'accuracy était de 0.462 (+10.7 points sur la baseline) —
+la catégorie a quasiment doublé l'écart à la baseline.
+
+La matrice de confusion montre des erreurs cohérentes avec la difficulté
+intrinsèque du problème : le modèle confond surtout Déjeuner↔Dîner et
+Petit-déjeuner↔Collation, des paires nutritionnellement proches (ex. un yaourt
+peut légitimement être pris au petit-déjeuner ou en collation) — pas des
+erreurs aléatoires. `sugar_g` et `sodium_mg` restent les features macro les
+plus discriminantes ; la catégorie la plus utile est `category_Repas/Transformé`.
+
+**Note qualité des données** : quelques valeurs de `category` dans le dataset
+source sont corrompues (fragments de parenthèses mal parsés du CSV Kaggle
+d'origine, ex. `"1 tasse)"`, `"4oz)"`). Sans impact sur le modèle — ces
+catégories obtiennent une importance ≈0 — mais à signaler comme limite connue
+de la qualité des données en amont (ETL).
+
+Détail complet : `docs/model-training-report-nutrition.md` (régénéré à chaque
+entraînement).
+
 ---
 
 ## 5. Métriques d'évaluation (MSE, RMSE, RSS, TSS, R²)
@@ -438,7 +694,8 @@ carbs_g     RMSE=58g        R²=−10.1   dev_moy=−51%
 - Remplacer le cache mémoire par Redis pour la prod
 
 **Moyen terme (avec ML) :**
-- Entraîner un modèle de régression sur les feedbacks workout pour ajuster les poids (actuellement hardcodés)
+- ~~Entraîner un modèle de régression sur les feedbacks workout pour ajuster les poids (actuellement hardcodés)~~ ✅ Fait — voir §3.5 (`ExerciseScoringModel`, `GradientBoostingClassifier`)
+- ~~Ré-entraînement périodique~~ ✅ Fait — `app/shared/infrastructure/retraining_scheduler.py` planifie un réentraînement hebdomadaire (dimanche, sport puis nutrition) via `APScheduler` (`AsyncIOScheduler`), équivalent Python d'`EtlWeeklySchedulerService` côté backend. Chaque script (`scripts/train_*.py`) tourne en sous-processus, et un garde-fou (`app/shared/domain/model_deployment_guard.py`) compare la métrique (F1 / F1 macro) du nouveau modèle à celle du modèle actuellement déployé (persistée dans un sidecar `*.metrics.json`) avant d'écraser le `.joblib` — un réentraînement qui produit un modèle moins bon ne remplace jamais l'ancien. Désactivé par défaut (`ENABLE_RETRAINING_SCHEDULER=false`), à activer explicitement en production. L'entraînement reste **par lot** (le volume ne justifie pas l'online learning, cf. §3.5) ; seule la fréquence devient automatique.
 - Intégrer un modèle de vision pour la détection réelle d'aliments (`POST /ai/nutrition/analyze` avec photo réelle)
 - Collaborative filtering : recommander des repas aimés par des users similaires
 

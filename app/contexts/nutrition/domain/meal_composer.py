@@ -9,6 +9,12 @@ Algorithme :
 
 Score d'un repas = 1 − mean(|deviation_i / target_i|) ∈ [0, 1]
 Plus le score est proche de 1, plus les macros du repas sont proches des cibles.
+
+Signal additionnel (ML) : quand le pool basé sur ``FoodCategory`` (heuristique
+mots-clés) est insuffisant pour un créneau, on enrichit d'abord avec les
+aliments dont ``MealTypeModel`` prédit le bon créneau réel (Kaggle), avant de
+retomber sur "tous les aliments permis". Le filtrage par contraintes/allergies
+reste, lui, entièrement déterministe — voir documentation/ai-engines-technical-doc.md §3.5/§4.
 """
 
 from __future__ import annotations
@@ -18,7 +24,8 @@ import re as _re
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from app.contexts.nutrition.domain.models import HealthProfile, Macros
+from app.contexts.nutrition.domain.meal_type_model import MealTypeModel
+from app.contexts.nutrition.domain.models import FoodMacroTuple, HealthProfile, Macros
 
 
 class FoodCategory(StrEnum):
@@ -34,6 +41,18 @@ class FoodItem:
     name: str
     macros: Macros
     category: FoodCategory
+    predicted_meal_type: str | None = (
+        None  # ex. "Petit-déjeuner" — None si modèle indisponible
+    )
+
+
+# Créneau de composition -> label réel du dataset Kaggle (MealTypeModel)
+_SLOT_TO_MEAL_TYPE = {
+    "breakfast": "Petit-déjeuner",
+    "lunch": "Déjeuner",
+    "dinner": "Dîner",
+    "snack": "Collation",
+}
 
 
 @dataclass
@@ -304,23 +323,36 @@ class MealComposerService:
     Usage ::
 
         from app.contexts.nutrition.infrastructure.backend_nutrition_lookup import BackendNutritionLookupService
-        catalog = svc._table   # {name: (cal, prot, carb, fat, fiber)}
+        catalog = svc._table   # {name: (cal, prot, carb, fat, fiber, sugar, sodium, cholesterol)}
         composer = MealComposerService(catalog)
         plan = composer.compose_week(health_profile, constraints={"vegetarien"})
     """
 
     def __init__(
         self,
-        catalog: dict[str, tuple[float, float, float, float, float]],
+        catalog: dict[str, FoodMacroTuple],
         rng_seed: int | None = None,
+        meal_type_model: MealTypeModel | None = None,
     ) -> None:
         self._rng = random.Random(rng_seed)
-        self._items: list[FoodItem] = self._build_items(catalog)
+        # Modèle ML optionnel (None si pas encore entraîné) — utilisé en
+        # signal additif uniquement, jamais comme filtre dur (cf. module docstring).
+        self._meal_type_model = (
+            meal_type_model if meal_type_model is not None else MealTypeModel.load()
+        )
+        self._items: list[FoodItem] = self._build_items(catalog, self._meal_type_model)
         self._by_category: dict[FoodCategory, list[FoodItem]] = {
             cat: [] for cat in FoodCategory
         }
         for item in self._items:
             self._by_category[item.category].append(item)
+        self._by_predicted_meal_type: dict[str, list[FoodItem]] = {}
+        for item in self._items:
+            if item.predicted_meal_type:
+                self._by_predicted_meal_type.setdefault(
+                    item.predicted_meal_type,
+                    [],
+                ).append(item)
 
     # ------------------------------------------------------------------
     # Public API
@@ -367,6 +399,7 @@ class MealComposerService:
                 n_foods=2,
                 exclude=used_recent,
                 day_offset=day,
+                slot="breakfast",
             )
             day_used += [f.split(" ×")[0] for f in breakfast.foods]
 
@@ -377,6 +410,7 @@ class MealComposerService:
                 n_foods=3,
                 exclude=used_recent + day_used,
                 day_offset=day,
+                slot="lunch",
             )
             day_used += [f.split(" ×")[0] for f in lunch.foods]
 
@@ -387,6 +421,7 @@ class MealComposerService:
                 n_foods=3,
                 exclude=used_recent + day_used,
                 day_offset=day + 7,
+                slot="dinner",
             )
             day_used += [f.split(" ×")[0] for f in dinner.foods]
 
@@ -397,6 +432,7 @@ class MealComposerService:
                 n_foods=1,
                 exclude=used_recent + day_used,
                 day_offset=day + 14,
+                slot="snack",
             )
             day_used += [f.split(" ×")[0] for f in snack.foods]
 
@@ -451,10 +487,20 @@ class MealComposerService:
 
     @staticmethod
     def _build_items(
-        catalog: dict[str, tuple[float, float, float, float, float]],
+        catalog: dict[str, FoodMacroTuple],
+        meal_type_model: MealTypeModel | None = None,
     ) -> list[FoodItem]:
-        items = []
-        for name, (cal, prot, carbs, fat, fiber) in catalog.items():
+        kept: list[tuple[str, Macros, float, float, float]] = []
+        for name, (
+            cal,
+            prot,
+            carbs,
+            fat,
+            fiber,
+            sugar,
+            sodium,
+            cholesterol,
+        ) in catalog.items():
             # Ignore aliments quasi sans valeur nutritive (ex: angostura bitters)
             if cal < 2 and prot < 0.5 and carbs < 0.5:
                 continue
@@ -465,10 +511,60 @@ class MealComposerService:
                 fats_g=fat,
                 fibers_g=fiber,
             )
-            items.append(
-                FoodItem(name=name, macros=macros, category=_classify(name, macros))
+            kept.append((name, macros, sugar, sodium, cholesterol))
+
+        predicted_types = MealComposerService._predict_meal_types(
+            kept,
+            meal_type_model,
+        )
+
+        return [
+            FoodItem(
+                name=name,
+                macros=macros,
+                category=_classify(name, macros),
+                predicted_meal_type=predicted_types[i],
             )
-        return items
+            for i, (name, macros, *_rest) in enumerate(kept)
+        ]
+
+    @staticmethod
+    def _predict_meal_types(
+        kept: list[tuple[str, Macros, float, float, float]],
+        meal_type_model: MealTypeModel | None,
+    ) -> list[str | None]:
+        """Prédit le créneau réel (Kaggle) en un seul appel vectorisé — appeler
+        le modèle aliment par aliment serait inutilement coûteux sur un
+        catalogue de 600+ entrées."""
+        if meal_type_model is None or not kept:
+            return [None] * len(kept)
+
+        import numpy as np
+
+        from app.contexts.nutrition.domain.meal_type_features import extract_features
+
+        features = np.array(
+            [
+                extract_features(
+                    {
+                        "calories_kcal": macros.calories,
+                        "protein_g": macros.proteins_g,
+                        "carbohydrates_g": macros.carbs_g,
+                        "fat_g": macros.fats_g,
+                        "fiber_g": macros.fibers_g,
+                        "sugar_g": sugar,
+                        "sodium_mg": sodium,
+                        "cholesterol_mg": cholesterol,
+                    },
+                )
+                for _, macros, sugar, sodium, cholesterol in kept
+            ],
+        )
+        try:
+            predictions = meal_type_model.predict(features)
+        except Exception:  # noqa: BLE001 - signal additif, jamais bloquant
+            return [None] * len(kept)
+        return [str(p) for p in predictions]
 
     @staticmethod
     def _meal_target(profile: HealthProfile, slot: str) -> Macros:
@@ -564,6 +660,7 @@ class MealComposerService:
         n_foods: int,
         exclude: list[str],
         day_offset: int = 0,
+        slot: str | None = None,
     ) -> ComposedMeal:
         """Sélectionne la meilleure combinaison de n_foods aliments pour ce slot,
         puis scale les portions pour atteindre la cible calorique."""
@@ -585,6 +682,21 @@ class MealComposerService:
                 pool.extend(shuffled[: min(8, len(shuffled))])
             if len(pool) >= n_foods * 4:
                 break
+
+        # Enrichissement ML : si le pool basé sur l'heuristique mots-clés est
+        # insuffisant, complète avec les aliments dont MealTypeModel prédit le
+        # bon créneau réel (Kaggle), avant de retomber sur "tous les permis".
+        # N'affecte jamais le chemin heureux (pool déjà suffisant).
+        if len(pool) < n_foods and slot is not None:
+            meal_type = _SLOT_TO_MEAL_TYPE.get(slot)
+            predicted_pool = self._by_predicted_meal_type.get(meal_type, [])
+            already = {i.name for i in pool}
+            extra = [
+                i
+                for i in predicted_pool
+                if i.name not in used_names and i.name not in already and i in allowed
+            ]
+            pool.extend(extra)
 
         # Fallback niveau 1 : tous les aliments permis (hors exclusions)
         if len(pool) < n_foods:

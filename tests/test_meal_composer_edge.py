@@ -7,27 +7,27 @@ from app.contexts.nutrition.domain.models import HealthProfile
 def _catalog():
     return {
         # protéines animales
-        "poulet grillé": (165, 31, 0, 4, 0),
-        "bœuf haché": (250, 26, 0, 15, 0),
-        "saumon fumé": (208, 20, 0, 13, 0),
+        "poulet grillé": (165, 31, 0, 4, 0, 0, 0, 0),
+        "bœuf haché": (250, 26, 0, 15, 0, 0, 0, 0),
+        "saumon fumé": (208, 20, 0, 13, 0, 0, 0, 0),
         # produits animaux (non-vegan)
-        "fromage blanc": (98, 8, 4, 5, 0),
-        "yaourt grec": (59, 10, 4, 0, 0),
-        "œuf dur": (155, 13, 1, 11, 0),
+        "fromage blanc": (98, 8, 4, 5, 0, 0, 0, 0),
+        "yaourt grec": (59, 10, 4, 0, 0, 0, 0, 0),
+        "œuf dur": (155, 13, 1, 11, 0, 0, 0, 0),
         # protéines végétales
-        "tofu mariné": (144, 15, 4, 8, 1),
-        "lentilles cuites": (116, 9, 20, 0, 8),
+        "tofu mariné": (144, 15, 4, 8, 1, 0, 0, 0),
+        "lentilles cuites": (116, 9, 20, 0, 8, 0, 0, 0),
         # glucides
-        "riz complet": (130, 3, 28, 1, 2),
-        "pain complet": (247, 13, 41, 3, 7),
-        "flocons d'avoine": (380, 13, 67, 7, 10),
+        "riz complet": (130, 3, 28, 1, 2, 0, 0, 0),
+        "pain complet": (247, 13, 41, 3, 7, 0, 0, 0),
+        "flocons d'avoine": (380, 13, 67, 7, 10, 0, 0, 0),
         # légumes
-        "brocoli vapeur": (34, 3, 7, 0, 3),
-        "epinards": (23, 3, 4, 0, 2),
+        "brocoli vapeur": (34, 3, 7, 0, 3, 0, 0, 0),
+        "epinards": (23, 3, 4, 0, 2, 0, 0, 0),
         # allergène
-        "beurre de cacahuète": (588, 25, 20, 50, 6),
+        "beurre de cacahuète": (588, 25, 20, 50, 6, 0, 0, 0),
         # aliment quasi sans valeur → doit être ignoré par _build_items
-        "angostura bitters": (1, 0, 0, 0, 0),
+        "angostura bitters": (1, 0, 0, 0, 0, 0, 0, 0),
     }
 
 
@@ -140,8 +140,8 @@ def test_compose_slot_complement_pool_exhausted():
     # Catalogue minimal : moins d'aliments distincts que n_foods demandés
     # → la boucle de complément s'arrête (complement_pool vide).
     tiny = {
-        "poulet grillé": (165, 31, 0, 4, 0),
-        "riz complet": (130, 3, 28, 1, 2),
+        "poulet grillé": (165, 31, 0, 4, 0, 0, 0, 0),
+        "riz complet": (130, 3, 28, 1, 2, 0, 0, 0),
     }
     composer = MealComposerService(tiny, rng_seed=1)
     target = composer._meal_target(HealthProfile(), "lunch")
