@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.3.1 (2026-06-28)
+
+### Bug Fixes
+
+- **vision**: Dedoublonne les aliments detectes
+  ([`e18cf8b`](https://github.com/MSPR-c-l-w/api-ia/commit/e18cf8bc1147fab1683d4c67b92f1f17cb750340))
+
+### Performance Improvements
+
+- **vision**: Redimensionne l'image a 1024px avant moondream
+  ([`4a904e2`](https://github.com/MSPR-c-l-w/api-ia/commit/4a904e2e405670f26c4ce100a1830313b82ca27f))
+
+
 ## v0.3.0 (2026-06-24)
 
 ### Bug Fixes
