@@ -13,10 +13,12 @@ aucune régression.
 from __future__ import annotations
 
 import base64
+import io
 import json
 import logging
 
 import httpx
+from PIL import Image
 
 from app.contexts.nutrition.domain.models import VisionDetection
 
@@ -40,6 +42,10 @@ _IMAGE_HEADERS = {"User-Agent": "HealthAI-Coach/1.0 (nutrition image fetch)"}
 _IMAGE_DOWNLOAD_TIMEOUT = 15
 # Durée de maintien du modèle en RAM côté Ollama entre deux requêtes.
 _KEEP_ALIVE = "30m"
+# Les photos de téléphone (2-5 Mo, pleine résolution) ralentissent fortement
+# l'inférence moondream et dépassent le timeout du backend. On redimensionne à
+# 1024 px max avant l'envoi : la classification d'aliments n'a pas besoin de plus.
+_MAX_IMAGE_DIM = 1024
 
 
 class OllamaVisionProvider:
@@ -68,6 +74,7 @@ class OllamaVisionProvider:
             image = image_base64 or await self._fetch_base64(image_url)
             if not image:
                 return []
+            image = self._downscale(image)
 
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 response = await client.post(
@@ -128,6 +135,27 @@ class OllamaVisionProvider:
             confidence = min(max(confidence, _MIN_CONFIDENCE), 1.0)
             detections.append(VisionDetection(label=label, confidence=confidence))
         return detections
+
+    @staticmethod
+    def _downscale(image_b64: str) -> str:
+        """Réduit l'image à ``_MAX_IMAGE_DIM`` px max (JPEG) pour accélérer moondream.
+
+        En cas d'échec (format inattendu), renvoie l'image d'origine.
+        """
+        try:
+            raw = base64.standard_b64decode(image_b64)
+            with Image.open(io.BytesIO(raw)) as img:
+                img = img.convert("RGB")
+                img.thumbnail((_MAX_IMAGE_DIM, _MAX_IMAGE_DIM))
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG", quality=80)
+            return base64.standard_b64encode(buffer.getvalue()).decode("utf-8")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "OllamaVisionProvider: redimensionnement impossible (%s) — image brute.",
+                exc,
+            )
+            return image_b64
 
     async def _fetch_base64(self, image_url: str | None) -> str | None:
         if not image_url:
