@@ -100,6 +100,16 @@ class AnalyzeMealUseCase:
             and self._nutrition_lookup.is_food_label(d.label)
         ]
 
+        # Dédoublonnage : les modèles de vision répètent souvent le même aliment
+        # (ex. « banane » 3-4 fois), ce qui gonfle aussi les macros. On garde une
+        # seule occurrence par label (la confiance la plus élevée).
+        deduped: dict[str, VisionDetection] = {}
+        for d in filtered:
+            key = d.label.strip().lower()
+            if key not in deduped or d.confidence > deduped[key].confidence:
+                deduped[key] = d
+        filtered = list(deduped.values())
+
         if filtered:
             detected_foods = [
                 DetectedFood(label=item.label, confidence=item.confidence)
@@ -126,6 +136,14 @@ class AnalyzeMealUseCase:
                 )
                 for food in detected_foods
             ]
+            # Deux variantes (« banane »/« banana ») peuvent se résoudre vers le
+            # même nom de catalogue : on dédoublonne aussi après résolution.
+            resolved: dict[str, DetectedFood] = {}
+            for food in detected_foods:
+                key = food.label.strip().lower()
+                if key not in resolved or food.confidence > resolved[key].confidence:
+                    resolved[key] = food
+            detected_foods = list(resolved.values())
 
         # 4. Build personalised health profile from biometrics (#88)
         health_profile = self._resolve_health_profile(payload, goal)
